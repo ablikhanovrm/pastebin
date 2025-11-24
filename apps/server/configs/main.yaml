@@ -5,11 +5,12 @@ http_server:
   timeout: 4s
   port: 8000
   idle_timeout: 60s
-
+  read_timeout: 10s
+  write_timeout: 10s
 db: 
   host: "localhost"
   port: "3306"
   username: "default"
-  password: "default"
+  password: "Qwerty12345"
   dbname: "pastebin"
   sslmode: "disable"
