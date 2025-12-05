@@ -1,9 +1,11 @@
-package app
+package main
 
-import "fmt"
+import (
+	"github.com/ablikhanovrm/pastebin/internal/app"
+)
 
-const configPath = "configs/main.yaml"
+const configPath = "../../configs/main.yaml"
 
 func main() {
-	fmt.Printf("helloo")
+	app.Run(configPath)
 }

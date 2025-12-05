@@ -5,9 +5,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitRoutes(r *gin.Engine, h *handler.Handler) {
+func InitRoutes(h *handler.Handler) *gin.Engine {
+	r := gin.New()
 	api := r.Group("/api")
 
 	InitAuthRoutes(api, h)
 	InitPasteRoutes(api, h)
+
+	return r
 }

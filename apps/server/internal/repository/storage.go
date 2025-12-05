@@ -15,8 +15,6 @@ func NewPostgresStorage(cfg *config.DatabaseConfig) (*pgx.Conn, error) {
 	conn, err := pgx.Connect(ctx, dbUrl)
 	if err != nil {
 		return nil, err
-		// fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		// os.Exit(1)
 	}
 
 	err = conn.Ping(ctx)
