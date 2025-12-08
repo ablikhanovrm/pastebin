@@ -2,12 +2,12 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/ablikhanovrm/pastebin/internal/config"
+	"github.com/ablikhanovrm/pastebin/internal/db"
 	"github.com/ablikhanovrm/pastebin/internal/repository"
 	"github.com/ablikhanovrm/pastebin/internal/service"
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/handler"
@@ -18,13 +18,15 @@ import (
 func Run(cofigPath string) {
 	config := config.GetConfig(cofigPath)
 
-	db, err := repository.NewPostgresStorage(&config.DB)
+	db.RunMigrate(&config.DB)
+
+	storage, err := repository.NewPostgresStorage(&config.DB)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		log.Error().Err(err).Msg("failed to connect database")
 	}
 
-	repo := repository.NewRepository(db)
+	repo := repository.NewRepository(storage.Queries)
 	services := service.NewService(repo)
 	handler := handler.NewHandler(services)
 	router := routes.InitRoutes(handler)
@@ -47,7 +49,6 @@ func Run(cofigPath string) {
 		log.Error().Err(err).Msg("Error occured on server shutting down")
 	}
 
-	if err := db.Close(context.Background()); err != nil {
-		log.Err(err).Msg("Err occured on db conntection close")
-	}
+	storage.Pool.Close()
+
 }

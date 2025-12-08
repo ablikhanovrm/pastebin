@@ -6,11 +6,11 @@ import (
 )
 
 func InitRoutes(h *handler.Handler) *gin.Engine {
-	r := gin.New()
-	api := r.Group("/api")
+	router := gin.New()
+	api := router.Group("/api")
 
 	InitAuthRoutes(api, h)
 	InitPasteRoutes(api, h)
 
-	return r
+	return router
 }

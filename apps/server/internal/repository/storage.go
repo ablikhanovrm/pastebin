@@ -5,22 +5,33 @@ import (
 	"fmt"
 
 	"github.com/ablikhanovrm/pastebin/internal/config"
-	"github.com/jackc/pgx/v5"
+	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewPostgresStorage(cfg *config.DatabaseConfig) (*pgx.Conn, error) {
+type PostgresStorage struct {
+	Pool    *pgxpool.Pool
+	Queries *dbgen.Queries
+}
+
+func NewPostgresStorage(cfg *config.DatabaseConfig) (*PostgresStorage, error) {
 	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DbName)
 	ctx := context.Background()
 
-	conn, err := pgx.Connect(ctx, dbUrl)
+	pool, err := pgxpool.New(ctx, dbUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	err = conn.Ping(ctx)
+	err = pool.Ping(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return conn, nil
+	queries := dbgen.New(pool)
+
+	return &PostgresStorage{
+		Pool:    pool,
+		Queries: queries,
+	}, nil
 }

@@ -1,10 +1,13 @@
 package repository
 
-import "github.com/jackc/pgx/v5"
+import (
+	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
+)
 
 type Repository struct {
+	q *dbgen.Queries
 }
 
-func NewRepository(*pgx.Conn) *Repository {
-	return &Repository{}
+func NewRepository(q *dbgen.Queries) *Repository {
+	return &Repository{q}
 }
