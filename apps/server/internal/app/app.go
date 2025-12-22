@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	"github.com/ablikhanovrm/pastebin/internal/config"
-	"github.com/ablikhanovrm/pastebin/internal/db"
 	"github.com/ablikhanovrm/pastebin/internal/repository"
 	"github.com/ablikhanovrm/pastebin/internal/service"
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/handler"
@@ -17,8 +16,6 @@ import (
 
 func Run(cofigPath string) {
 	config := config.GetConfig(cofigPath)
-
-	db.RunMigrate(&config.DB)
 
 	storage, err := repository.NewPostgresStorage(&config.DB)
 

@@ -7,7 +7,33 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (username, password_hash)
+VALUES ($1, $2)
+RETURNING id, username, created_at
+`
+
+type CreateUserParams struct {
+	Username     string
+	PasswordHash string
+}
+
+type CreateUserRow struct {
+	ID        int64
+	Username  string
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.PasswordHash)
+	var i CreateUserRow
+	err := row.Scan(&i.ID, &i.Username, &i.CreatedAt)
+	return i, err
+}
 
 const getUserById = `-- name: GetUserById :one
 SELECT id, username, password_hash, created_at FROM users AS u WHERE u.id = $1

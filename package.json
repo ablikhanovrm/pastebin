@@ -3,15 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "predev": "pnpm run install:client && pnpm run install:server",
-    
     "dev": "concurrently \"pnpm run dev:frontend\" \"pnpm run dev:backend\"",
 
-    "install:client": "cd apps/client && [ -d node_modules ] || pnpm install",
-    "install:server": "cd apps/server && go mod download",
+    "install:client": "cd apps/client && pnpm install", 
 
     "dev:frontend": "cd apps/client && pnpm run dev",
-    "dev:backend": "cd apps/server && go run main.go"
+    "dev:backend": "cd apps/server && go run main.go",
+
+    "migrate:up":  "cd apps/server && go run cmd/migrate/main.go up",
+    "migrate:down":"cd apps/server && go run cmd/migrate/main.go down"
   },
   "devDependencies": {
     "concurrently": "8.2.0"
