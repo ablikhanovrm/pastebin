@@ -23,6 +23,19 @@ CREATE TABLE pastes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE refresh_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    revoked BOOLEAN NOT NULL DEFAULT FALSE,
+     -- метаданные
+    user_agent TEXT,
+    ip_address INET,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE INDEX idx_pastes_uuid ON pastes(uuid);
 CREATE INDEX idx_pastes_user_id ON pastes(user_id);
 CREATE INDEX idx_pastes_expire_at ON pastes(expire_at);
+CREATE INDEX idx_tokens_user_id ON pastes(user_id);

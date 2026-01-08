@@ -7,6 +7,7 @@ http_server:
   idle_timeout: 60s
   read_timeout: 10s
   write_timeout: 10s
+  jwt_secret: super_secret_key
 db: 
   host: "localhost"
   port: "3306"

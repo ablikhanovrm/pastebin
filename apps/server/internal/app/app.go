@@ -11,6 +11,7 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/service"
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/handler"
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/routes"
+	"github.com/ablikhanovrm/pastebin/pkg/jwt"
 	"github.com/rs/zerolog/log"
 )
 
@@ -18,19 +19,19 @@ func Run(cofigPath string) {
 	config := config.GetConfig(cofigPath)
 
 	storage, err := repository.NewPostgresStorage(&config.DB)
-
 	if err != nil {
 		log.Error().Err(err).Msg("failed to connect database")
 	}
 
 	repo := repository.NewRepository(storage.Queries)
-	services := service.NewService(repo)
+	manager := jwt.New(config.Server.JwtSecret)
+	services := service.NewService(repo, manager)
 	handler := handler.NewHandler(services)
 	router := routes.InitRoutes(handler)
+
 	srv := new(Server)
 
 	go func() {
-
 		if err := srv.NewServer(config, router); err != nil {
 			log.Fatal().Err(err).Msg("Failed to run server")
 		}
@@ -47,5 +48,4 @@ func Run(cofigPath string) {
 	}
 
 	storage.Pool.Close()
-
 }

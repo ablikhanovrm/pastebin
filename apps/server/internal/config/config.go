@@ -19,6 +19,7 @@ type HttpServer struct {
 	ReadTimeout  time.Duration `yaml:"read_timeout" env-default:"10s" env:"HTTP_READ_TIMEOUT" `
 	WriteTimeout time.Duration `yaml:"write_timeout" env-default:"10s" env:"HTTP_WRITE_TIMEOUT"`
 	IdleTimeout  time.Duration `yaml:"idle_timeout" env-default:"60s" env:"HTTP_IDLE_TIMEOUT"`
+	JwtSecret    string        `yaml:"jwt_secret" env-default:"super_secret_key" env:"JWT_SECRET"`
 }
 
 type DatabaseConfig struct {
@@ -34,7 +35,6 @@ func GetConfig(configPath string) *Config {
 	var cfg Config
 
 	err := cleanenv.ReadConfig(configPath, &cfg)
-
 	if err != nil {
 		log.Fatalf("Failed to init config", err.Error())
 	}
