@@ -1,7 +1,8 @@
 package jwt
 
+import "github.com/golang-jwt/jwt/v5"
+
 type Claims struct {
 	UserID int64 `json:"user_id"`
-	Exp    int64 `json:"exp"`
-	Iat    int64 `json:"iat"`
+	jwt.RegisteredClaims
 }

@@ -5,8 +5,12 @@ import (
 	"encoding/base64"
 )
 
-func GenerateRandomString(n int) string {
-	b := make([]byte, n)
-	rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b)
+func GenerateRefreshToken(bytesLen int) (string, error) {
+	b := make([]byte, bytesLen)
+
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }

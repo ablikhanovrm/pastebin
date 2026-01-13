@@ -1,15 +1,20 @@
 package auth
 
 import (
+	"context"
+	"time"
+
 	"github.com/ablikhanovrm/pastebin/internal/repository/auth"
 	"github.com/ablikhanovrm/pastebin/internal/repository/user"
 	"github.com/ablikhanovrm/pastebin/pkg/jwt"
+	"github.com/ablikhanovrm/pastebin/pkg/random"
+	"github.com/ablikhanovrm/pastebin/pkg/security"
 )
 
 type Service interface {
-	Login(email, password string) (*Tokens, error)
-	Refresh(refreshToken string) (*Tokens, error)
-	Logout(refreshToken string) error
+	Login(ctx context.Context, email, password string) (*Tokens, error)
+	Refresh(ctx context.Context, refreshToken string) (*Tokens, error)
+	Logout(ctx context.Context, refreshToken string) error
 }
 
 type AuthService struct {
@@ -30,11 +35,38 @@ func NewAuthService(
 	}
 }
 
-func (s *AuthService) Login(email string, password string) (*Tokens, error) {
+func (s *AuthService) Login(ctx context.Context, email string, password string) (*Tokens, error) {
+	user, err := s.users.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	if user != nil {
+		return nil, ErrUserAlreadyExists
+	}
+
+	token, err := s.tokens.Generate(user.ID, time.Second*60)
+	if err != nil {
+		return nil, err
+	}
+
+	if !security.CheckPassword(user.PasswordHash, password) {
+		return nil, ErrInvalidCredentials
+	}
+
+	refreshToken, err := random.GenerateRefreshToken(32)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Tokens{
+		AccessToken:  token,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
-func (s *AuthService) Refresh(refreshToken string) (*Tokens, error) {
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 }
 
-func (s *AuthService) Logout(refreshToken string) error {
+func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*Tokens, error) {
 }
