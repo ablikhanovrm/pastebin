@@ -5,6 +5,8 @@
 package dbgen
 
 import (
+	"net/netip"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -20,6 +22,17 @@ type Paste struct {
 	ExpireAt        pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
+}
+
+type RefreshToken struct {
+	ID        int64
+	UserID    int64
+	TokenHash string
+	Revoked   bool
+	UserAgent pgtype.Text
+	IpAddress *netip.Addr
+	ExpiresAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
 }
 
 type User struct {
