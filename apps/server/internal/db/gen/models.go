@@ -29,6 +29,7 @@ type RefreshToken struct {
 	UserID    int64
 	TokenHash string
 	Revoked   bool
+	RevokedAt pgtype.Timestamptz
 	UserAgent pgtype.Text
 	IpAddress *netip.Addr
 	ExpiresAt pgtype.Timestamptz

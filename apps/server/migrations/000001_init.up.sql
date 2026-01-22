@@ -28,6 +28,7 @@ CREATE TABLE refresh_tokens (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token_hash TEXT NOT NULL UNIQUE,
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    revoked_at TIMESTAMPTZ,
      -- метаданные
     user_agent TEXT,
     ip_address INET,

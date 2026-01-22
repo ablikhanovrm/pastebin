@@ -66,7 +66,11 @@ func (s *AuthService) Login(ctx context.Context, email string, password string) 
 }
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	// hash := hash.HashRefreshToken(refreshToken)
+	// repo.RevokeByHash(hash)
 }
 
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*Tokens, error) {
+	// hash := hash.HashRefreshToken(refreshToken)
+	// rt, err := repo.GetByHash(hash)
 }

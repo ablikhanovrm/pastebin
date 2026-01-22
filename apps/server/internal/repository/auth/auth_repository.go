@@ -9,9 +9,9 @@ import (
 )
 
 type AuthRepository interface {
-	SaveRefreshToken(ctx context.Context, userID int64, token models.RefreshToken) error
-	DeleteRefreshToken(ctx context.Context, token string) error
-	IsRefreshTokenValid(ctx context.Context, token string) (bool, error)
+	SaveRefreshToken(ctx context.Context, userID int64, token models.RefreshToken) (int64, error)
+	RevokeRefreshTokenByHash(ctx context.Context, token string) error
+	GetRefreshTokenByHash(ctx context.Context, token string) (*models.RefreshToken, error)
 }
 
 type SqlcAuthRepository struct {
@@ -42,10 +42,19 @@ func (r *SqlcAuthRepository) SaveRefreshToken(ctx context.Context, userID int64,
 	return row.ID, nil
 }
 
-func (r *SqlcAuthRepository) DeleteRefreshToken(ctx context.Context, token string) error {
+func (r *SqlcAuthRepository) RevokeRefreshTokenByHash(ctx context.Context, token string) error {
+	err := r.q.RevokeRefreshToken(ctx, token)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (r *SqlcAuthRepository) IsRefreshTokenValid(ctx context.Context, token string) (bool, error) {
-	return false, nil
+func (r *SqlcAuthRepository) GetRefreshTokenByHash(ctx context.Context, token string) (*models.RefreshToken, error) {
+	refreshToken, err := r.q.GetRefreshTokenByHash(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapRefreshToken(refreshToken), nil
 }
