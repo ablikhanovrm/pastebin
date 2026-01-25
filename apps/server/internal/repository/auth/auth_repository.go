@@ -9,7 +9,7 @@ import (
 )
 
 type AuthRepository interface {
-	SaveRefreshToken(ctx context.Context, userID int64, token models.RefreshToken) (int64, error)
+	CreateRefreshToken(ctx context.Context, userID int64, token models.RefreshToken) (int64, error)
 	RevokeRefreshTokenByHash(ctx context.Context, token string) error
 	GetRefreshTokenByHash(ctx context.Context, token string) (*models.RefreshToken, error)
 }
@@ -18,18 +18,24 @@ type SqlcAuthRepository struct {
 	q *dbgen.Queries
 }
 
-func NewSqlcAuthRepository(q *dbgen.Queries) *SqlcAuthRepository {
-	return &SqlcAuthRepository{q: q}
+func NewSqlcAuthRepository(db dbgen.DBTX) *SqlcAuthRepository {
+	return &SqlcAuthRepository{
+		q: dbgen.New(db),
+	}
 }
 
-func (r *SqlcAuthRepository) SaveRefreshToken(ctx context.Context, userID int64, token models.RefreshToken) (int64, error) {
+func (r *SqlcAuthRepository) CreateRefreshToken(ctx context.Context, userID int64, token models.RefreshToken) (int64, error) {
 	params := dbgen.CreateRefreshTokenParams{
 		UserID:    token.UserID,
 		TokenHash: token.TokenHash,
 		UserAgent: toPgText(token.UserAgent),
 		IpAddress: toNetIp(token.IPAddress),
-		ExpiresAt: pgtype.Timestamptz{
+		ExpiresAt: pgtype.Timestamptz{ // TTL
 			Time:  token.ExpiresAt,
+			Valid: true,
+		},
+		SessionExpiresAt: pgtype.Timestamptz{ // absolute TTL
+			Time:  token.SessionExpiresAt,
 			Valid: true,
 		},
 	}

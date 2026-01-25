@@ -25,15 +25,16 @@ type Paste struct {
 }
 
 type RefreshToken struct {
-	ID        int64
-	UserID    int64
-	TokenHash string
-	Revoked   bool
-	RevokedAt pgtype.Timestamptz
-	UserAgent pgtype.Text
-	IpAddress *netip.Addr
-	ExpiresAt pgtype.Timestamptz
-	CreatedAt pgtype.Timestamptz
+	ID               int64
+	UserID           int64
+	TokenHash        string
+	Revoked          bool
+	RevokedAt        pgtype.Timestamptz
+	UserAgent        pgtype.Text
+	IpAddress        *netip.Addr
+	ExpiresAt        pgtype.Timestamptz
+	SessionExpiresAt pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
 }
 
 type User struct {

@@ -33,6 +33,7 @@ CREATE TABLE refresh_tokens (
     user_agent TEXT,
     ip_address INET,
     expires_at TIMESTAMPTZ NOT NULL,
+    session_expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 

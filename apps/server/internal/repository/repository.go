@@ -13,10 +13,10 @@ type Repository struct {
 	Auth  auth.AuthRepository
 }
 
-func NewRepository(q *dbgen.Queries) *Repository {
+func NewRepository(db dbgen.DBTX) *Repository {
 	return &Repository{
-		User:  user.NewSqlcUserRepository(q),
-		Paste: paste.NewSqlcPasteRepository(q),
-		Auth:  auth.NewSqlcAuthRepository(q),
+		User:  user.NewSqlcUserRepository(db),
+		Paste: paste.NewSqlcPasteRepository(db),
+		Auth:  auth.NewSqlcAuthRepository(db),
 	}
 }

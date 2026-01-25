@@ -23,9 +23,9 @@ func Run(cofigPath string) {
 		log.Error().Err(err).Msg("failed to connect database")
 	}
 
-	repo := repository.NewRepository(storage.Queries)
+	repo := repository.NewRepository(storage.Pool)
 	manager := jwt.New(config.Server.JwtSecret)
-	services := service.NewService(repo, manager)
+	services := service.NewService(repo, manager, storage.Pool)
 	handler := handler.NewHandler(services)
 	router := routes.InitRoutes(handler)
 

@@ -6,6 +6,7 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/service/paste"
 	"github.com/ablikhanovrm/pastebin/internal/service/user"
 	"github.com/ablikhanovrm/pastebin/pkg/jwt"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Services struct {
@@ -17,9 +18,10 @@ type Services struct {
 func NewService(
 	repo *repository.Repository,
 	jwtManager *jwt.Manager,
+	db *pgxpool.Pool,
 ) *Services {
 	return &Services{
-		Auth:  auth.NewAuthService(repo.User, repo.Auth, jwtManager),
+		Auth:  auth.NewAuthService(repo.User, repo.Auth, jwtManager, db),
 		User:  user.NewUserService(repo.User),
 		Paste: paste.NewPasteService(repo.Paste),
 	}

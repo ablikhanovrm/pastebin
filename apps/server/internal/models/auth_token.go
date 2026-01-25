@@ -11,6 +11,7 @@ type RefreshToken struct {
 	UserAgent *string
 	IPAddress *string
 
-	ExpiresAt time.Time
-	CreatedAt time.Time
+	ExpiresAt        time.Time
+	CreatedAt        time.Time
+	SessionExpiresAt time.Time
 }

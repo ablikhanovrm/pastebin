@@ -6,9 +6,11 @@ import (
 
 	"github.com/ablikhanovrm/pastebin/internal/repository/auth"
 	"github.com/ablikhanovrm/pastebin/internal/repository/user"
+	"github.com/ablikhanovrm/pastebin/pkg/hash"
 	"github.com/ablikhanovrm/pastebin/pkg/jwt"
 	"github.com/ablikhanovrm/pastebin/pkg/random"
 	"github.com/ablikhanovrm/pastebin/pkg/security"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Service interface {
@@ -18,20 +20,23 @@ type Service interface {
 }
 
 type AuthService struct {
-	users    user.UserRepository
-	tokens   *jwt.Manager
-	authRepo auth.AuthRepository
+	users  user.UserRepository
+	repo   auth.AuthRepository
+	tokens *jwt.Manager
+	db     *pgxpool.Pool
 }
 
 func NewAuthService(
 	users user.UserRepository,
-	authRepo auth.AuthRepository,
+	repo auth.AuthRepository,
 	tokens *jwt.Manager,
+	db *pgxpool.Pool,
 ) *AuthService {
 	return &AuthService{
-		users:    users,
-		authRepo: authRepo,
-		tokens:   tokens,
+		repo:   repo,
+		users:  users,
+		tokens: tokens,
+		db:     db,
 	}
 }
 
@@ -66,11 +71,31 @@ func (s *AuthService) Login(ctx context.Context, email string, password string) 
 }
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
-	// hash := hash.HashRefreshToken(refreshToken)
-	// repo.RevokeByHash(hash)
+	hash := hash.HashRefreshToken(refreshToken)
+	err := s.repo.RevokeRefreshTokenByHash(ctx, hash)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*Tokens, error) {
-	// hash := hash.HashRefreshToken(refreshToken)
-	// rt, err := repo.GetByHash(hash)
+	hash := hash.HashRefreshToken(refreshToken)
+	rt, err := s.repo.GetRefreshTokenByHash(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if time.Now().After(rt.ExpiresAt) {
+		return nil, ErrTokenExpired
+	}
+
+	if time.Now().After(rt.SessionExpiresAt) {
+		return nil, ErrReauthRequired
+	}
+
+	// TRANSACTION
+	// ├─ revoke OLD refresh
+	// ├─ create NEW refresh
+	// └─ generate NEW access
 }

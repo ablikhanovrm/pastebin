@@ -13,11 +13,11 @@ type UserRepository interface {
 }
 
 type SqlcUserRepository struct {
-	q *dbgen.Queries
+	db dbgen.DBTX
 }
 
-func NewSqlcUserRepository(q *dbgen.Queries) *SqlcUserRepository {
-	return &SqlcUserRepository{q: q}
+func NewSqlcUserRepository(db dbgen.DBTX) *SqlcUserRepository {
+	return &SqlcUserRepository{db: db}
 }
 
 func (*SqlcUserRepository) FindByEmail(ctx context.Context, email string) (*dbgen.User, error) {

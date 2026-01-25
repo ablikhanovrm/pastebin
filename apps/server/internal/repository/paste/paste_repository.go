@@ -12,11 +12,11 @@ type PasteRepository interface {
 }
 
 type SqlcPasteRepository struct {
-	q *dbgen.Queries
+	db dbgen.DBTX
 }
 
-func NewSqlcPasteRepository(q *dbgen.Queries) *SqlcPasteRepository {
-	return &SqlcPasteRepository{q: q}
+func NewSqlcPasteRepository(db dbgen.DBTX) *SqlcPasteRepository {
+	return &SqlcPasteRepository{db: db}
 }
 
 func (*SqlcPasteRepository) FindByID(ctx context.Context, id int64) (*dbgen.Paste, error) {

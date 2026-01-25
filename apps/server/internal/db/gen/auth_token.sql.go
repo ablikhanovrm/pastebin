@@ -13,15 +13,16 @@ import (
 )
 
 const createRefreshToken = `-- name: CreateRefreshToken :one
-INSERT INTO refresh_tokens (user_id, token_hash, user_agent, ip_address, expires_at) VALUES ($1,$2,$3,$4,$5) RETURNING id, created_at
+INSERT INTO refresh_tokens (user_id, token_hash, user_agent, ip_address, expires_at, session_expires_at) VALUES ($1,$2,$3,$4,$5, $6) RETURNING id, created_at
 `
 
 type CreateRefreshTokenParams struct {
-	UserID    int64
-	TokenHash string
-	UserAgent pgtype.Text
-	IpAddress *netip.Addr
-	ExpiresAt pgtype.Timestamptz
+	UserID           int64
+	TokenHash        string
+	UserAgent        pgtype.Text
+	IpAddress        *netip.Addr
+	ExpiresAt        pgtype.Timestamptz
+	SessionExpiresAt pgtype.Timestamptz
 }
 
 type CreateRefreshTokenRow struct {
@@ -36,6 +37,7 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 		arg.UserAgent,
 		arg.IpAddress,
 		arg.ExpiresAt,
+		arg.SessionExpiresAt,
 	)
 	var i CreateRefreshTokenRow
 	err := row.Scan(&i.ID, &i.CreatedAt)
@@ -46,6 +48,7 @@ const getRefreshTokenByHash = `-- name: GetRefreshTokenByHash :one
 SELECT r.user_id, r.token_hash, r.user_agent, r.ip_address, r.expires_at 
 FROM refresh_tokens AS r
 WHERE r.token_hash = $1 AND r.revoked = false
+LIMIT 1
 `
 
 type GetRefreshTokenByHashRow struct {
