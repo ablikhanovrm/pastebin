@@ -1,8 +1,10 @@
 -- name: GetUserById :one
-SELECT * FROM users AS u WHERE u.id = $1;
+SELECT id, name, email, created_at FROM users AS u WHERE u.id = $1;
 
+-- name: GetUserByEmail :one
+SELECT id, name, email, created_at FROM users AS u WHERE u.email = $1;
 
 -- name: CreateUser :one
-INSERT INTO users (username, password_hash)
+INSERT INTO users (name, password_hash)
 VALUES ($1, $2)
-RETURNING id, username, created_at;
+RETURNING id, name, created_at;

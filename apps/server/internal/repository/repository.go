@@ -5,6 +5,7 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/repository/auth"
 	"github.com/ablikhanovrm/pastebin/internal/repository/paste"
 	"github.com/ablikhanovrm/pastebin/internal/repository/user"
+	"github.com/rs/zerolog"
 )
 
 type Repository struct {
@@ -13,10 +14,10 @@ type Repository struct {
 	Auth  auth.AuthRepository
 }
 
-func NewRepository(db dbgen.DBTX) *Repository {
+func NewRepository(db dbgen.DBTX, logger zerolog.Logger) *Repository {
 	return &Repository{
-		User:  user.NewSqlcUserRepository(db),
-		Paste: paste.NewSqlcPasteRepository(db),
-		Auth:  auth.NewSqlcAuthRepository(db),
+		User:  user.NewSqlcUserRepository(db, logger),
+		Paste: paste.NewSqlcPasteRepository(db, logger),
+		Auth:  auth.NewSqlcAuthRepository(db, logger),
 	}
 }

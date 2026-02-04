@@ -4,27 +4,30 @@ import (
 	"context"
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
-	"github.com/ablikhanovrm/pastebin/internal/models"
+	"github.com/ablikhanovrm/pastebin/internal/models/auth"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog"
 )
 
 type AuthRepository interface {
-	CreateRefreshToken(ctx context.Context, userID int64, token models.RefreshToken) (int64, error)
+	CreateRefreshToken(ctx context.Context, userID int64, token auth.RefreshToken) (int64, error)
 	RevokeRefreshTokenByHash(ctx context.Context, token string) error
-	GetRefreshTokenByHash(ctx context.Context, token string) (*models.RefreshToken, error)
+	GetRefreshTokenByHash(ctx context.Context, token string) (*auth.RefreshToken, error)
 }
 
 type SqlcAuthRepository struct {
-	q *dbgen.Queries
+	q      *dbgen.Queries
+	logger zerolog.Logger
 }
 
-func NewSqlcAuthRepository(db dbgen.DBTX) *SqlcAuthRepository {
+func NewSqlcAuthRepository(db dbgen.DBTX, logger zerolog.Logger) *SqlcAuthRepository {
 	return &SqlcAuthRepository{
-		q: dbgen.New(db),
+		q:      dbgen.New(db),
+		logger: logger,
 	}
 }
 
-func (r *SqlcAuthRepository) CreateRefreshToken(ctx context.Context, userID int64, token models.RefreshToken) (int64, error) {
+func (r *SqlcAuthRepository) CreateRefreshToken(ctx context.Context, userID int64, token auth.RefreshToken) (int64, error) {
 	params := dbgen.CreateRefreshTokenParams{
 		UserID:    token.UserID,
 		TokenHash: token.TokenHash,
@@ -56,7 +59,7 @@ func (r *SqlcAuthRepository) RevokeRefreshTokenByHash(ctx context.Context, token
 	return nil
 }
 
-func (r *SqlcAuthRepository) GetRefreshTokenByHash(ctx context.Context, token string) (*models.RefreshToken, error) {
+func (r *SqlcAuthRepository) GetRefreshTokenByHash(ctx context.Context, token string) (*auth.RefreshToken, error) {
 	refreshToken, err := r.q.GetRefreshTokenByHash(ctx, token)
 	if err != nil {
 		return nil, err

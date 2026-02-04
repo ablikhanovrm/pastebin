@@ -2,12 +2,14 @@ package paste
 
 import (
 	"github.com/ablikhanovrm/pastebin/internal/repository/paste"
+	"github.com/rs/zerolog"
 )
 
 type PasteService struct {
-	repo paste.PasteRepository
+	repo   paste.PasteRepository
+	logger zerolog.Logger
 }
 
-func NewPasteService(repo paste.PasteRepository) *PasteService {
-	return &PasteService{repo: repo}
+func NewPasteService(repo paste.PasteRepository, logger zerolog.Logger) *PasteService {
+	return &PasteService{repo: repo, logger: logger}
 }

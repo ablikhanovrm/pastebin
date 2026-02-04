@@ -5,7 +5,7 @@ import (
 	"time"
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
-	"github.com/ablikhanovrm/pastebin/internal/models"
+	"github.com/ablikhanovrm/pastebin/internal/models/auth"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -33,7 +33,7 @@ func toPgText(s *string) pgtype.Text {
 	}
 }
 
-func mapRefreshToken(row dbgen.GetRefreshTokenByHashRow) *models.RefreshToken {
+func mapRefreshToken(row dbgen.GetRefreshTokenByHashRow) *auth.RefreshToken {
 	var ua *string
 	if row.UserAgent.Valid {
 		ua = &row.UserAgent.String
@@ -50,7 +50,7 @@ func mapRefreshToken(row dbgen.GetRefreshTokenByHashRow) *models.RefreshToken {
 		ip = row.IpAddress.String()
 	}
 
-	return &models.RefreshToken{
+	return &auth.RefreshToken{
 		UserID:    row.UserID,
 		TokenHash: row.TokenHash,
 		UserAgent: ua,

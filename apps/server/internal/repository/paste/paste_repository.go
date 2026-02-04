@@ -4,6 +4,7 @@ import (
 	"context"
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
+	"github.com/rs/zerolog"
 )
 
 type PasteRepository interface {
@@ -12,11 +13,12 @@ type PasteRepository interface {
 }
 
 type SqlcPasteRepository struct {
-	db dbgen.DBTX
+	db     dbgen.DBTX
+	logger zerolog.Logger
 }
 
-func NewSqlcPasteRepository(db dbgen.DBTX) *SqlcPasteRepository {
-	return &SqlcPasteRepository{db: db}
+func NewSqlcPasteRepository(db dbgen.DBTX, logger zerolog.Logger) *SqlcPasteRepository {
+	return &SqlcPasteRepository{db: db, logger: logger}
 }
 
 func (*SqlcPasteRepository) FindByID(ctx context.Context, id int64) (*dbgen.Paste, error) {

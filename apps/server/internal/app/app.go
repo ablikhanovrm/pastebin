@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/ablikhanovrm/pastebin/internal/config"
+	"github.com/ablikhanovrm/pastebin/internal/logging"
 	"github.com/ablikhanovrm/pastebin/internal/repository"
 	"github.com/ablikhanovrm/pastebin/internal/service"
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/handler"
@@ -15,25 +16,28 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func Run(cofigPath string) {
-	config := config.GetConfig(cofigPath)
+func Run(configPath string) {
+	newConfig := config.GetConfig(configPath)
 
-	storage, err := repository.NewPostgresStorage(&config.DB)
+	logger := logging.New("pastebin")
+
+	storage, err := repository.NewPostgresStorage(&newConfig.DB)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to connect database")
+		logger.Error().Err(err).Msg("failed to connect database")
 	}
 
-	repo := repository.NewRepository(storage.Pool)
-	manager := jwt.New(config.Server.JwtSecret)
-	services := service.NewService(repo, manager, storage.Pool)
-	handler := handler.NewHandler(services)
-	router := routes.InitRoutes(handler)
+	repo := repository.NewRepository(storage.Pool, logger.With().Str("layer", "repository").Logger())
+	manager := jwt.New(newConfig.Server.JwtSecret)
+	services := service.NewServices(repo, manager, storage.Pool, logger.With().Str("layer", "service").Logger())
+	handlerLogger := logger.With().Str("layer", "handler").Logger()
+	newHandler := handler.NewHandler(services, handlerLogger)
+	router := routes.InitRoutes(newHandler)
 
 	srv := new(Server)
 
 	go func() {
-		if err := srv.NewServer(config, router); err != nil {
-			log.Fatal().Err(err).Msg("Failed to run server")
+		if err := srv.NewServer(newConfig, router); err != nil {
+			logger.Fatal().Err(err).Msg("Failed to run server")
 		}
 	}()
 
@@ -41,10 +45,10 @@ func Run(cofigPath string) {
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
 
-	log.Warn().Msg("TodoApp Shutting down")
+	logger.Warn().Msg("TodoApp Shutting down")
 
 	if err := srv.Shutdown(context.Background()); err != nil {
-		log.Error().Err(err).Msg("Error occured on server shutting down")
+		log.Error().Err(err).Msg("Error occurred on server shutting down")
 	}
 
 	storage.Pool.Close()
