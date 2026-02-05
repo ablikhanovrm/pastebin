@@ -11,9 +11,9 @@ import (
 )
 
 type Services struct {
-	Auth  *auth.AuthService
-	User  *user.UserService
-	Paste *paste.PasteService
+	Auth  *auth.Service
+	User  *user.Service
+	Paste *paste.Service
 }
 
 func NewServices(
@@ -35,8 +35,8 @@ func NewServices(
 		Logger()
 
 	return &Services{
-		Auth:  auth.NewAuthService(repo.User, repo.Auth, jwtManager, db, authLogger),
-		User:  user.NewUserService(repo.User, userLogger),
-		Paste: paste.NewPasteService(repo.Paste, pasteLogger),
+		Auth:  auth.NewAuthService(repo.User, jwtManager, db, authLogger),
+		User:  user.NewUserService(db, userLogger),
+		Paste: paste.NewPasteService(db, pasteLogger),
 	}
 }

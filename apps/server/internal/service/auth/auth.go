@@ -2,10 +2,12 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"time"
 
-	auth "github.com/ablikhanovrm/pastebin/internal/models/auth"
-	user "github.com/ablikhanovrm/pastebin/internal/models/user"
+	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
+	"github.com/ablikhanovrm/pastebin/internal/models/auth"
+	"github.com/ablikhanovrm/pastebin/internal/models/user"
 	authrepo "github.com/ablikhanovrm/pastebin/internal/repository/auth"
 	userrepo "github.com/ablikhanovrm/pastebin/internal/repository/user"
 	"github.com/ablikhanovrm/pastebin/pkg/hash"
@@ -17,43 +19,46 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type Service interface {
+type AuthService interface {
 	Login(ctx context.Context, email, password string) (*Tokens, error)
+	Register(ctx context.Context, input RegisterInput) (*Tokens, error)
 	Refresh(ctx context.Context, refreshToken string) (*Tokens, error)
 	Logout(ctx context.Context, refreshToken string) error
 }
 
-type AuthService struct {
+type Service struct {
 	users  userrepo.UserRepository
-	repo   authrepo.AuthRepository
 	tokens *jwt.Manager
 	db     *pgxpool.Pool
-	logger zerolog.Logger
+	log    zerolog.Logger
 }
 
 func NewAuthService(
 	users userrepo.UserRepository,
-	repo authrepo.AuthRepository,
 	tokens *jwt.Manager,
 	db *pgxpool.Pool,
-	logger zerolog.Logger,
-) *AuthService {
-	return &AuthService{
-		repo:   repo,
+	log zerolog.Logger,
+) *Service {
+	return &Service{
 		users:  users,
 		tokens: tokens,
 		db:     db,
-		logger: logger,
+		log:    log,
 	}
 }
 
-func (s *AuthService) Login(ctx context.Context, email string, password string) (*Tokens, error) {
-	foundUser, err := s.users.FindByEmail(ctx, email)
+// repo helper
+func (s *Service) repo(db dbgen.DBTX) *authrepo.SqlcAuthRepository {
+	return authrepo.NewSqlcAuthRepository(db, s.log)
+}
+
+func (s *Service) Login(ctx context.Context, params LoginInput) (*Tokens, error) {
+	foundUser, err := s.users.FindByEmail(ctx, params.Email)
 	if err != nil {
 		return nil, err
 	}
 
-	if !security.CheckPassword(foundUser.PasswordHash, password) {
+	if !security.CheckPassword(foundUser.PasswordHash, params.Password) {
 		return nil, user.ErrInvalidCredentials
 	}
 
@@ -66,7 +71,19 @@ func (s *AuthService) Login(ctx context.Context, email string, password string) 
 	if err != nil {
 		return nil, err
 	}
-	//TODO: save rt to db
+
+	_, err = s.repo(s.db).CreateRefreshToken(ctx, auth.RefreshToken{
+		ExpiresAt:        time.Now().Add(time.Hour * 24 * 15),
+		SessionExpiresAt: time.Now().Add(time.Hour * 24 * 30),
+		TokenHash:        refreshToken,
+		UserAgent:        &params.UserAgent,
+		UserID:           foundUser.Id,
+		IPAddress:        &params.IP,
+	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &Tokens{
 		AccessToken:  token,
@@ -74,18 +91,18 @@ func (s *AuthService) Login(ctx context.Context, email string, password string) 
 	}, nil
 }
 
-func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
-	hash := hash.HashRefreshToken(refreshToken)
-	err := s.repo.RevokeRefreshTokenByHash(ctx, hash)
+func (s *Service) Logout(ctx context.Context, refreshToken string) error {
+	hashRt := hash.HashRefreshToken(refreshToken)
+	err := s.repo(s.db).RevokeRefreshTokenByHash(ctx, hashRt)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *AuthService) Refresh(ctx context.Context, refreshToken string, ip string, ua string) (*Tokens, error) {
-	hash := hash.HashRefreshToken(refreshToken)
-	rt, err := s.repo.GetRefreshTokenByHash(ctx, hash)
+func (s *Service) Refresh(ctx context.Context, refreshToken string, ip string, ua string) (*Tokens, error) {
+	hashRt := hash.HashRefreshToken(refreshToken)
+	rt, err := s.repo(s.db).GetRefreshTokenByHash(ctx, hashRt)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +114,12 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string, ip strin
 		return nil, auth.ErrReauthRequired
 	}
 
-	foundUser, err := s.users.FindByEmail(ctx, email)
+	foundUser, err := s.users.FindByID(ctx, rt.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	newRtHash, err := random.GenerateRefreshToken(32)
 	if err != nil {
 		return nil, err
 	}
@@ -112,14 +134,11 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string, ip strin
 	}
 	defer tx.Rollback(ctx)
 
-	s.repo.RevokeRefreshTokenByHash(ctx, hash)
-
-	newRtHash, err := random.GenerateRefreshToken(32)
-	if err != nil {
+	if err := s.repo(tx).RevokeRefreshTokenByHash(ctx, hashRt); err != nil {
 		return nil, err
 	}
 
-	_, err = s.repo.CreateRefreshToken(ctx, rt.UserID, auth.RefreshToken{
+	_, err = s.repo(tx).CreateRefreshToken(ctx, auth.RefreshToken{
 		ExpiresAt:        time.Now().Add(time.Hour * 24 * 30),
 		SessionExpiresAt: rt.SessionExpiresAt,
 		TokenHash:        newRtHash,
@@ -140,8 +159,60 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string, ip strin
 
 	token, err := s.tokens.Generate(foundUser.Id, time.Minute*15)
 	if err != nil {
-		s.logger.Warn().Err(err).Msg("failed to generate access token")
+		s.log.Warn().Err(err).
+			Int64("user_id", foundUser.Id).
+			Msg("failed to generate access token")
+
+		token = ""
 	}
 
 	return &Tokens{AccessToken: token, RefreshToken: newRtHash}, nil
+}
+
+func (s *Service) Register(ctx context.Context, input RegisterInput) (*Tokens, error) {
+	hashPass, err := security.HashPassword(input.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	userId, err := s.users.Create(ctx, user.User{
+		Email:        input.Email,
+		PasswordHash: hashPass,
+		Name:         input.Name,
+	})
+
+	if err != nil {
+		if errors.Is(err, user.ErrUserAlreadyExists) {
+			return nil, user.ErrUserAlreadyExists
+		}
+		return nil, err
+	}
+
+	access, err := s.tokens.Generate(userId, 15*time.Minute)
+	if err != nil {
+		s.log.Warn().Err(err).Msg("failed generate access")
+	}
+
+	refresh, err := random.GenerateRefreshToken(32)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.repo(s.db).CreateRefreshToken(ctx, auth.RefreshToken{
+		ExpiresAt:        time.Now().Add(time.Hour * 24 * 30),
+		SessionExpiresAt: time.Now().Add(time.Hour * 24 * 30),
+		TokenHash:        refresh,
+		UserAgent:        &input.UserAgent,
+		UserID:           userId,
+		IPAddress:        &input.IP,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Tokens{
+		AccessToken:  access,
+		RefreshToken: refresh,
+	}, nil
 }

@@ -10,24 +10,24 @@ import (
 )
 
 type AuthRepository interface {
-	CreateRefreshToken(ctx context.Context, userID int64, token auth.RefreshToken) (int64, error)
+	CreateRefreshToken(ctx context.Context, token auth.RefreshToken) (int64, error)
 	RevokeRefreshTokenByHash(ctx context.Context, token string) error
 	GetRefreshTokenByHash(ctx context.Context, token string) (*auth.RefreshToken, error)
 }
 
 type SqlcAuthRepository struct {
-	q      *dbgen.Queries
-	logger zerolog.Logger
+	q   *dbgen.Queries
+	log zerolog.Logger
 }
 
-func NewSqlcAuthRepository(db dbgen.DBTX, logger zerolog.Logger) *SqlcAuthRepository {
+func NewSqlcAuthRepository(db dbgen.DBTX, log zerolog.Logger) *SqlcAuthRepository {
 	return &SqlcAuthRepository{
-		q:      dbgen.New(db),
-		logger: logger,
+		q:   dbgen.New(db),
+		log: log,
 	}
 }
 
-func (r *SqlcAuthRepository) CreateRefreshToken(ctx context.Context, userID int64, token auth.RefreshToken) (int64, error) {
+func (r *SqlcAuthRepository) CreateRefreshToken(ctx context.Context, token auth.RefreshToken) (int64, error) {
 	params := dbgen.CreateRefreshTokenParams{
 		UserID:    token.UserID,
 		TokenHash: token.TokenHash,

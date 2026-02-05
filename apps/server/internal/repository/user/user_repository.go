@@ -3,28 +3,30 @@ package user
 import (
 	"context"
 	"errors"
+	"time"
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
 	"github.com/ablikhanovrm/pastebin/internal/models/user"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog"
 )
 
 type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (*user.User, error)
 	FindByID(ctx context.Context, id int64) (*user.User, error)
-	Create(ctx context.Context, u *user.User) error
+	Create(ctx context.Context, u user.User) (int64, error) // TODO: use custom input for user
 }
 
 type SqlcUserRepository struct {
-	q      *dbgen.Queries
-	logger zerolog.Logger
+	q   *dbgen.Queries
+	log zerolog.Logger
 }
 
-func NewSqlcUserRepository(db dbgen.DBTX, logger zerolog.Logger) *SqlcUserRepository {
+func NewSqlcUserRepository(db dbgen.DBTX, log zerolog.Logger) *SqlcUserRepository {
 	return &SqlcUserRepository{
-		q:      dbgen.New(db),
-		logger: logger,
+		q:   dbgen.New(db),
+		log: log,
 	}
 }
 func (r *SqlcUserRepository) FindByEmail(ctx context.Context, email string) (*user.User, error) {
@@ -55,6 +57,28 @@ func (r *SqlcUserRepository) FindByID(ctx context.Context, id int64) (*user.User
 	return mapUserById(foundUser), nil
 }
 
-func (r *SqlcUserRepository) Create(ctx context.Context, u *user.User) error {
+func (r *SqlcUserRepository) Create(ctx context.Context, u user.User) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*2)
+	defer cancel()
 
+	params := dbgen.CreateUserParams{
+		Name:         u.Name,
+		Email:        u.Email,
+		PasswordHash: u.PasswordHash,
+	}
+
+	row, err := r.q.CreateUser(ctx, params)
+
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				return 0, user.ErrUserAlreadyExists
+			}
+		}
+
+		return 0, err
+	}
+
+	return row.ID, nil
 }

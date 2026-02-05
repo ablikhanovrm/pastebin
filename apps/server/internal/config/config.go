@@ -14,12 +14,13 @@ type Config struct {
 }
 
 type HttpServer struct {
-	Host         string        `yaml:"host" env-default:"localhost" env:"API_HOST"`
-	Port         string        `yaml:"port" env-default:"8000" env:"API_PORT"`
-	ReadTimeout  time.Duration `yaml:"read_timeout" env-default:"10s" env:"HTTP_READ_TIMEOUT" `
-	WriteTimeout time.Duration `yaml:"write_timeout" env-default:"10s" env:"HTTP_WRITE_TIMEOUT"`
-	IdleTimeout  time.Duration `yaml:"idle_timeout" env-default:"60s" env:"HTTP_IDLE_TIMEOUT"`
-	JwtSecret    string        `yaml:"jwt_secret" env-default:"super_secret_key" env:"JWT_SECRET"`
+	Host          string        `yaml:"host" env-default:"localhost" env:"API_HOST"`
+	Port          string        `yaml:"port" env-default:"8000" env:"API_PORT"`
+	ReadTimeout   time.Duration `yaml:"read_timeout" env-default:"10s" env:"HTTP_READ_TIMEOUT" `
+	WriteTimeout  time.Duration `yaml:"write_timeout" env-default:"10s" env:"HTTP_WRITE_TIMEOUT"`
+	IdleTimeout   time.Duration `yaml:"idle_timeout" env-default:"60s" env:"HTTP_IDLE_TIMEOUT"`
+	JwtSecret     string        `yaml:"jwt_secret" env-default:"super_secret_key" env:"JWT_SECRET"`
+	SecureCookies bool          `yaml:"secure_cookies" env-default:"false" env:"SECURE_COOKIES"`
 }
 
 type DatabaseConfig struct {
