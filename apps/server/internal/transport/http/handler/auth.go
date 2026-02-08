@@ -92,3 +92,69 @@ func (h *Handler) Register(c *gin.Context) {
 
 	c.JSON(200, resp)
 }
+
+func (h *Handler) Logout(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	rt, err := c.Cookie("refresh_token")
+
+	if err != nil {
+		c.JSON(200, gin.H{"status": "ok"})
+		return
+
+	}
+
+	err = h.services.Auth.Logout(ctx, rt)
+
+	if err != nil {
+		h.log.Warn().Err(err).Msg("logout failed")
+		c.JSON(400, gin.H{"error": "invalid refresh token"})
+		return
+	}
+	secure := h.cfg.SecureCookies
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	c.JSON(200, gin.H{"status": "ok"})
+	return
+}
+
+func (h *Handler) RefreshToken(c *gin.Context) {
+	rt, err := c.Cookie("refresh_token")
+
+	if err != nil || rt == "" {
+		c.JSON(401, gin.H{"error": "unauthorized"}) // TODO error mapping
+		return
+	}
+
+	tokens, err := h.services.Auth.Refresh(c.Request.Context(), rt, middleware.GetClientIP(c), middleware.GetUserAgent(c))
+
+	if err != nil {
+		c.JSON(401, gin.H{"error": "refresh token failed"})
+		return
+	}
+
+	secure := h.cfg.SecureCookies
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    tokens.RefreshToken,
+		Path:     "/",
+		MaxAge:   60 * 60 * 24 * 30,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	resp := RegisterResponse{
+		AccessToken: tokens.AccessToken,
+	}
+
+	c.JSON(200, resp)
+}

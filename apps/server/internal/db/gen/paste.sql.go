@@ -7,10 +7,58 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createPaste = `-- name: CreatePaste :one
+INSERT INTO pastes (uuid, user_id, title, content, syntax, is_private, is_burn_after_read, expire_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, uuid, user_id, title, content, syntax, is_private, is_burn_after_read, expire_at, created_at, updated_at
+`
+
+type CreatePasteParams struct {
+	Uuid            pgtype.UUID
+	UserID          pgtype.Int8
+	Title           pgtype.Text
+	Content         string
+	Syntax          pgtype.Text
+	IsPrivate       bool
+	IsBurnAfterRead bool
+	ExpireAt        pgtype.Timestamptz
+}
+
+func (q *Queries) CreatePaste(ctx context.Context, arg CreatePasteParams) (Paste, error) {
+	row := q.db.QueryRow(ctx, createPaste,
+		arg.Uuid,
+		arg.UserID,
+		arg.Title,
+		arg.Content,
+		arg.Syntax,
+		arg.IsPrivate,
+		arg.IsBurnAfterRead,
+		arg.ExpireAt,
+	)
+	var i Paste
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.UserID,
+		&i.Title,
+		&i.Content,
+		&i.Syntax,
+		&i.IsPrivate,
+		&i.IsBurnAfterRead,
+		&i.ExpireAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getPasteById = `-- name: GetPasteById :one
-SELECT id, uuid, user_id, title, content, syntax, is_private, is_burn_after_read, expire_at, created_at, updated_at FROM pastes as p WHERE p.id = $1
+SELECT id, uuid, user_id, title, content, syntax, is_private, is_burn_after_read, expire_at, created_at, updated_at FROM pastes as p
+WHERE p.id = $1
 `
 
 func (q *Queries) GetPasteById(ctx context.Context, id int64) (Paste, error) {
@@ -30,4 +78,42 @@ func (q *Queries) GetPasteById(ctx context.Context, id int64) (Paste, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getPastes = `-- name: GetPastes :many
+SELECT id, uuid, user_id, title, content, syntax, is_private, is_burn_after_read, expire_at, created_at, updated_at FROM pastes as p
+WHERE p.user_id = $1
+ORDER BY p.created_at DESC
+`
+
+func (q *Queries) GetPastes(ctx context.Context, userID pgtype.Int8) ([]Paste, error) {
+	rows, err := q.db.Query(ctx, getPastes, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Paste
+	for rows.Next() {
+		var i Paste
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.UserID,
+			&i.Title,
+			&i.Content,
+			&i.Syntax,
+			&i.IsPrivate,
+			&i.IsBurnAfterRead,
+			&i.ExpireAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

@@ -20,9 +20,9 @@ import (
 )
 
 type AuthService interface {
-	Login(ctx context.Context, email, password string) (*Tokens, error)
+	Login(ctx context.Context, params LoginInput) (*Tokens, error)
 	Register(ctx context.Context, input RegisterInput) (*Tokens, error)
-	Refresh(ctx context.Context, refreshToken string) (*Tokens, error)
+	Refresh(ctx context.Context, refreshToken string, ip string, ua string) (*Tokens, error)
 	Logout(ctx context.Context, refreshToken string) error
 }
 
@@ -132,6 +132,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, ip string, u
 	if err != nil {
 		return nil, err
 	}
+
 	defer tx.Rollback(ctx)
 
 	if err := s.repo(tx).RevokeRefreshTokenByHash(ctx, hashRt); err != nil {

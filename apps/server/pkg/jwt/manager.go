@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -34,10 +35,14 @@ func (m *Manager) Parse(tokenSrt string) (*Claims, error) {
 		tokenSrt,
 		&Claims{},
 		func(token *jwt.Token) (interface{}, error) {
-			return m.secret, nil
+			return []byte(m.secret), nil
 		},
 	)
+
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, jwt.ErrTokenExpired
+		}
 		return nil, err
 	}
 

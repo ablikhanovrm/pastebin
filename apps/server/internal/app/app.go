@@ -26,13 +26,13 @@ func Run(configPath string) {
 	}
 
 	repo := repository.NewRepository(storage.Pool, logger.With().Str("layer", "repository").Logger())
-	manager := jwt.New(newConfig.Server.JwtSecret)
-	services := service.NewServices(repo, manager, storage.Pool, logger.With().Str("layer", "service").Logger())
+	jwtManager := jwt.New(newConfig.Server.JwtSecret)
+	services := service.NewServices(repo, jwtManager, storage.Pool, logger.With().Str("layer", "service").Logger())
 
 	handlerLogger := logger.With().Str("layer", "handler").Logger()
 	newHandler := handler.NewHandler(services, &newConfig.Server, handlerLogger)
 
-	router := routes.InitRoutes(newHandler)
+	router := routes.InitRoutes(newHandler, jwtManager)
 
 	srv := new(Server)
 

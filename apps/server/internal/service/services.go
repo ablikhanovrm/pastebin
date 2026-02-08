@@ -22,17 +22,9 @@ func NewServices(
 	db *pgxpool.Pool,
 	logger zerolog.Logger,
 ) *Services {
-	authLogger := logger.With().
-		Str("service", "auth").
-		Logger()
-
-	userLogger := logger.With().
-		Str("service", "user").
-		Logger()
-
-	pasteLogger := logger.With().
-		Str("service", "paste").
-		Logger()
+	authLogger := logger.With().Str("service", "auth").Logger()
+	userLogger := logger.With().Str("service", "user").Logger()
+	pasteLogger := logger.With().Str("service", "paste").Logger()
 
 	return &Services{
 		Auth:  auth.NewAuthService(repo.User, jwtManager, db, authLogger),

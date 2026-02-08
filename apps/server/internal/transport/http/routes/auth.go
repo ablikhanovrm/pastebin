@@ -9,6 +9,8 @@ func InitAuthRoutes(rg *gin.RouterGroup, h *handler.Handler) {
 	auth := rg.Group("/auth")
 	{
 		auth.POST("/login", h.Login)
-		auth.POST("/login", h.Register)
+		auth.POST("/register", h.Register)
+		auth.POST("/refresh", h.RefreshToken)
+		auth.POST("/logout", h.Logout)
 	}
 }
