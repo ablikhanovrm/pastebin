@@ -9,15 +9,18 @@ CREATE TABLE users
 
 CREATE TABLE pastes (
     id BIGSERIAL PRIMARY KEY,
-    uuid UUID NOT NULL UNIQUE,             -- публичный идентификатор 
-    user_id BIGINT REFERENCES users(id),   -- null если paste анонимная
+    uuid UUID NOT NULL UNIQUE, -- публичный идентификатор
+    user_id BIGINT NOT NULL REFERENCES users(id),
 
-    title TEXT,
-    content TEXT NOT NULL,
+    title TEXT NOT NULL,
+    s3_key TEXT NOT NULL,
 
-    syntax TEXT,                           -- "go", "js", "none" — подсветка
-    is_private BOOLEAN NOT NULL DEFAULT FALSE,
-    is_burn_after_read BOOLEAN NOT NULL DEFAULT FALSE,
+    views_count INT NOT NULL DEFAULT 0,
+    max_views INT,
+    status TEXT NOT NULL DEFAULT 'active',
+
+    syntax TEXT NOT NULL DEFAULT 'plain',  -- "plain, code"
+    visibility TEXT NOT NULL DEFAULT 'public',
 
     expire_at TIMESTAMPTZ,                 -- null → бессрочно
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

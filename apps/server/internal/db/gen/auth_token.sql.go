@@ -21,7 +21,7 @@ RETURNING id, created_at
 type CreateRefreshTokenParams struct {
 	UserID           int64
 	TokenHash        string
-	UserAgent        pgtype.Text
+	UserAgent        *string
 	IpAddress        *netip.Addr
 	ExpiresAt        pgtype.Timestamptz
 	SessionExpiresAt pgtype.Timestamptz
@@ -56,7 +56,7 @@ LIMIT 1
 type GetRefreshTokenByHashRow struct {
 	UserID    int64
 	TokenHash string
-	UserAgent pgtype.Text
+	UserAgent *string
 	IpAddress *netip.Addr
 	ExpiresAt pgtype.Timestamptz
 }

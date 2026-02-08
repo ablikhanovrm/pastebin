@@ -1,6 +1,10 @@
 package paste
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Syntax string
 
@@ -17,26 +21,28 @@ const (
 	VisibilityPrivate  Visibility = "private"
 )
 
-type UserStatus string
+type PasteStatus string
 
 const (
-	Active     UserStatus = "active"
-	Terminated UserStatus = "Terminated"
+	Active     PasteStatus = "active"
+	Terminated PasteStatus = "terminated"
 )
 
 type Paste struct {
-	Id           int64
-	PasteUrl     string
-	UserId       int64
-	Title        string
-	Content      string
-	Syntax       Syntax
-	Visibility   Visibility
-	PasswordHash *string
-	MaxViews     *int32
-	ViewsCount   int32
-	ExpiresAt    time.Time
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	Status       UserStatus
+	Id     int64
+	Uuid   uuid.UUID
+	UserId int64
+
+	Title string
+	S3Key string
+
+	Syntax     Syntax
+	Visibility Visibility
+
+	ViewsCount int32
+	MaxViews   *int32 // null = бесконечно
+
+	ExpiresAt *time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

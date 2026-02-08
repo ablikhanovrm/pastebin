@@ -34,11 +34,6 @@ func toPgText(s *string) pgtype.Text {
 }
 
 func mapRefreshToken(row dbgen.GetRefreshTokenByHashRow) *auth.RefreshToken {
-	var ua *string
-	if row.UserAgent.Valid {
-		ua = &row.UserAgent.String
-	}
-
 	var expiresAt time.Time
 	if row.ExpiresAt.Valid {
 		expiresAt = row.ExpiresAt.Time
@@ -53,7 +48,7 @@ func mapRefreshToken(row dbgen.GetRefreshTokenByHashRow) *auth.RefreshToken {
 	return &auth.RefreshToken{
 		UserID:    row.UserID,
 		TokenHash: row.TokenHash,
-		UserAgent: ua,
+		UserAgent: row.UserAgent,
 		IPAddress: &ip,
 		ExpiresAt: expiresAt,
 	}

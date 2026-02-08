@@ -7,21 +7,24 @@ package dbgen
 import (
 	"net/netip"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Paste struct {
-	ID              int64
-	Uuid            pgtype.UUID
-	UserID          pgtype.Int8
-	Title           pgtype.Text
-	Content         string
-	Syntax          pgtype.Text
-	IsPrivate       bool
-	IsBurnAfterRead bool
-	ExpireAt        pgtype.Timestamptz
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	ID         int64
+	Uuid       uuid.UUID
+	UserID     int64
+	Title      string
+	S3Key      string
+	ViewsCount int32
+	MaxViews   *int32
+	Status     string
+	Syntax     string
+	Visibility string
+	ExpireAt   pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }
 
 type RefreshToken struct {
@@ -30,7 +33,7 @@ type RefreshToken struct {
 	TokenHash        string
 	Revoked          bool
 	RevokedAt        pgtype.Timestamptz
-	UserAgent        pgtype.Text
+	UserAgent        *string
 	IpAddress        *netip.Addr
 	ExpiresAt        pgtype.Timestamptz
 	SessionExpiresAt pgtype.Timestamptz

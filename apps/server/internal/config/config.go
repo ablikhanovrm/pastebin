@@ -11,6 +11,7 @@ type Config struct {
 	AppEnv string         `yaml:"env" env-default:"local" env:"APP_ENV"`
 	Server HttpServer     `yaml:"http_server"`
 	DB     DatabaseConfig `yaml:"db"`
+	S3     S3Config       `yaml:"s3"`
 }
 
 type HttpServer struct {
@@ -32,12 +33,20 @@ type DatabaseConfig struct {
 	SslMode  string `yaml:"sslmode" env-default:"disable" env:"SSL_MODE"`
 }
 
+type S3Config struct {
+	Endpoint  string `yaml:"endpoint" env-default:"https://pupuha-dev.object.pscloud.io" env:"S3_ENDPOINT"`
+	Region    string `yaml:"region" env-default:"us-east-1" env:"S3_REGION"`
+	Bucket    string `yaml:"bucket" env-default:"pupuha-dev" env:"S3_BUCKET"`
+	AccessKey string `yaml:"access_key" env-default:"V9M58P398E715KZHYNPS" env:"S3_ACCESS_KEY"`
+	SecretKey string `yaml:"secret_key" env-default:"IO24QaIQ1i0xROcnKF2fwO77CyI7E0TXmFs88ffq" env:"S3_SECRET_KEY"`
+}
+
 func GetConfig(configPath string) *Config {
 	var cfg Config
 
 	err := cleanenv.ReadConfig(configPath, &cfg)
 	if err != nil {
-		log.Fatalf("Failed to init config", err.Error())
+		log.Fatalf("failed to init config", err.Error())
 	}
 
 	return &cfg

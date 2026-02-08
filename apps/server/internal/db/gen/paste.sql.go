@@ -8,24 +8,25 @@ package dbgen
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createPaste = `-- name: CreatePaste :one
-INSERT INTO pastes (uuid, user_id, title, content, syntax, is_private, is_burn_after_read, expire_at)
+INSERT INTO pastes (uuid, user_id, title, s3_key, syntax, max_views, visibility, expire_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, uuid, user_id, title, content, syntax, is_private, is_burn_after_read, expire_at, created_at, updated_at
+RETURNING id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at
 `
 
 type CreatePasteParams struct {
-	Uuid            pgtype.UUID
-	UserID          pgtype.Int8
-	Title           pgtype.Text
-	Content         string
-	Syntax          pgtype.Text
-	IsPrivate       bool
-	IsBurnAfterRead bool
-	ExpireAt        pgtype.Timestamptz
+	Uuid       uuid.UUID
+	UserID     int64
+	Title      string
+	S3Key      string
+	Syntax     string
+	MaxViews   *int32
+	Visibility string
+	ExpireAt   pgtype.Timestamptz
 }
 
 func (q *Queries) CreatePaste(ctx context.Context, arg CreatePasteParams) (Paste, error) {
@@ -33,10 +34,10 @@ func (q *Queries) CreatePaste(ctx context.Context, arg CreatePasteParams) (Paste
 		arg.Uuid,
 		arg.UserID,
 		arg.Title,
-		arg.Content,
+		arg.S3Key,
 		arg.Syntax,
-		arg.IsPrivate,
-		arg.IsBurnAfterRead,
+		arg.MaxViews,
+		arg.Visibility,
 		arg.ExpireAt,
 	)
 	var i Paste
@@ -45,10 +46,12 @@ func (q *Queries) CreatePaste(ctx context.Context, arg CreatePasteParams) (Paste
 		&i.Uuid,
 		&i.UserID,
 		&i.Title,
-		&i.Content,
+		&i.S3Key,
+		&i.ViewsCount,
+		&i.MaxViews,
+		&i.Status,
 		&i.Syntax,
-		&i.IsPrivate,
-		&i.IsBurnAfterRead,
+		&i.Visibility,
 		&i.ExpireAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -56,23 +59,35 @@ func (q *Queries) CreatePaste(ctx context.Context, arg CreatePasteParams) (Paste
 	return i, err
 }
 
-const getPasteById = `-- name: GetPasteById :one
-SELECT id, uuid, user_id, title, content, syntax, is_private, is_burn_after_read, expire_at, created_at, updated_at FROM pastes as p
-WHERE p.id = $1
+const deletePaste = `-- name: DeletePaste :exec
+DELETE FROM pastes WHERE uuid = $1
 `
 
-func (q *Queries) GetPasteById(ctx context.Context, id int64) (Paste, error) {
-	row := q.db.QueryRow(ctx, getPasteById, id)
+func (q *Queries) DeletePaste(ctx context.Context, argUuid uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deletePaste, argUuid)
+	return err
+}
+
+const getPasteById = `-- name: GetPasteById :one
+SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
+WHERE p.uuid = $1
+LIMIT 1
+`
+
+func (q *Queries) GetPasteById(ctx context.Context, argUuid uuid.UUID) (Paste, error) {
+	row := q.db.QueryRow(ctx, getPasteById, argUuid)
 	var i Paste
 	err := row.Scan(
 		&i.ID,
 		&i.Uuid,
 		&i.UserID,
 		&i.Title,
-		&i.Content,
+		&i.S3Key,
+		&i.ViewsCount,
+		&i.MaxViews,
+		&i.Status,
 		&i.Syntax,
-		&i.IsPrivate,
-		&i.IsBurnAfterRead,
+		&i.Visibility,
 		&i.ExpireAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -81,12 +96,13 @@ func (q *Queries) GetPasteById(ctx context.Context, id int64) (Paste, error) {
 }
 
 const getPastes = `-- name: GetPastes :many
-SELECT id, uuid, user_id, title, content, syntax, is_private, is_burn_after_read, expire_at, created_at, updated_at FROM pastes as p
-WHERE p.user_id = $1
+SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
+WHERE p.visibility='public'
+   OR p.user_id=$1
 ORDER BY p.created_at DESC
 `
 
-func (q *Queries) GetPastes(ctx context.Context, userID pgtype.Int8) ([]Paste, error) {
+func (q *Queries) GetPastes(ctx context.Context, userID int64) ([]Paste, error) {
 	rows, err := q.db.Query(ctx, getPastes, userID)
 	if err != nil {
 		return nil, err
@@ -100,10 +116,12 @@ func (q *Queries) GetPastes(ctx context.Context, userID pgtype.Int8) ([]Paste, e
 			&i.Uuid,
 			&i.UserID,
 			&i.Title,
-			&i.Content,
+			&i.S3Key,
+			&i.ViewsCount,
+			&i.MaxViews,
+			&i.Status,
 			&i.Syntax,
-			&i.IsPrivate,
-			&i.IsBurnAfterRead,
+			&i.Visibility,
 			&i.ExpireAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -116,4 +134,77 @@ func (q *Queries) GetPastes(ctx context.Context, userID pgtype.Int8) ([]Paste, e
 		return nil, err
 	}
 	return items, nil
+}
+
+const getUserPastes = `-- name: GetUserPastes :many
+SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
+WHERE p.user_id = $1
+ORDER BY p.created_at DESC
+`
+
+func (q *Queries) GetUserPastes(ctx context.Context, userID int64) ([]Paste, error) {
+	rows, err := q.db.Query(ctx, getUserPastes, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Paste
+	for rows.Next() {
+		var i Paste
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.UserID,
+			&i.Title,
+			&i.S3Key,
+			&i.ViewsCount,
+			&i.MaxViews,
+			&i.Status,
+			&i.Syntax,
+			&i.Visibility,
+			&i.ExpireAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updatePaste = `-- name: UpdatePaste :exec
+UPDATE pastes
+SET
+    title = $2,
+    syntax = $3,
+    visibility = $4,
+    max_views = $5,
+    expire_at = $6,
+    updated_at = now()
+WHERE uuid = $1
+`
+
+type UpdatePasteParams struct {
+	Uuid       uuid.UUID
+	Title      string
+	Syntax     string
+	Visibility string
+	MaxViews   *int32
+	ExpireAt   pgtype.Timestamptz
+}
+
+func (q *Queries) UpdatePaste(ctx context.Context, arg UpdatePasteParams) error {
+	_, err := q.db.Exec(ctx, updatePaste,
+		arg.Uuid,
+		arg.Title,
+		arg.Syntax,
+		arg.Visibility,
+		arg.MaxViews,
+		arg.ExpireAt,
+	)
+	return err
 }

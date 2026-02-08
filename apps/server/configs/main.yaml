@@ -16,3 +16,10 @@ db:
   password: "Qwerty12345"
   dbname: "pastebin"
   sslmode: "disable"
+s3:
+  endpoint: "https://pupuha-dev.object.pscloud.io"
+  bucket: "pupuha-dev"
+  access_key: "V9M58P398E715KZHYNPS"
+  secret_key: "IO24QaIQ1i0xROcnKF2fwO77CyI7E0TXmFs88ffq"
+#  use_ssl: false
+  region: "us-east-1"
