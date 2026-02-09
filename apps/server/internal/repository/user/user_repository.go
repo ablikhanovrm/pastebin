@@ -29,6 +29,7 @@ func NewSqlcUserRepository(db dbgen.DBTX, log zerolog.Logger) *SqlcUserRepositor
 		log: log,
 	}
 }
+
 func (r *SqlcUserRepository) FindByEmail(ctx context.Context, email string) (*user.User, error) {
 	foundUser, err := r.q.GetUserByEmail(ctx, email)
 

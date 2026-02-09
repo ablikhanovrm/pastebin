@@ -60,22 +60,32 @@ func (q *Queries) CreatePaste(ctx context.Context, arg CreatePasteParams) (Paste
 }
 
 const deletePaste = `-- name: DeletePaste :exec
-DELETE FROM pastes WHERE uuid = $1
+DELETE FROM pastes WHERE uuid = $1 AND user_id = $2
 `
 
-func (q *Queries) DeletePaste(ctx context.Context, argUuid uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deletePaste, argUuid)
+type DeletePasteParams struct {
+	Uuid   uuid.UUID
+	UserID int64
+}
+
+func (q *Queries) DeletePaste(ctx context.Context, arg DeletePasteParams) error {
+	_, err := q.db.Exec(ctx, deletePaste, arg.Uuid, arg.UserID)
 	return err
 }
 
 const getPasteById = `-- name: GetPasteById :one
 SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
-WHERE p.uuid = $1
+WHERE p.uuid = $1 AND p.user_id = $2
 LIMIT 1
 `
 
-func (q *Queries) GetPasteById(ctx context.Context, argUuid uuid.UUID) (Paste, error) {
-	row := q.db.QueryRow(ctx, getPasteById, argUuid)
+type GetPasteByIdParams struct {
+	Uuid   uuid.UUID
+	UserID int64
+}
+
+func (q *Queries) GetPasteById(ctx context.Context, arg GetPasteByIdParams) (Paste, error) {
+	row := q.db.QueryRow(ctx, getPasteById, arg.Uuid, arg.UserID)
 	var i Paste
 	err := row.Scan(
 		&i.ID,

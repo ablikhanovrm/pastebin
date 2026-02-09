@@ -11,11 +11,12 @@ import (
 )
 
 type PasteRepository interface {
-	GetByID(ctx context.Context, id int64) (*dbgen.Paste, error)
-	Create(ctx context.Context, u *dbgen.Paste) (*dbgen.Paste, error)
-	GetAll(ctx context.Context) ([]*dbgen.Paste, error)
-	Update(ctx context.Context, paste *dbgen.Paste) (*dbgen.Paste, error)
-	Delete(ctx context.Context, id int64) error
+	Create(ctx context.Context, u *paste.Paste) (*paste.Paste, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*paste.Paste, error)
+	GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
+	GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
+	Update(ctx context.Context, paste *paste.Paste) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type SqlcPasteRepository struct {
@@ -25,48 +26,6 @@ type SqlcPasteRepository struct {
 
 func NewSqlcPasteRepository(db dbgen.DBTX, log zerolog.Logger) *SqlcPasteRepository {
 	return &SqlcPasteRepository{q: dbgen.New(db), log: log}
-}
-
-func (r *SqlcPasteRepository) GetByID(ctx context.Context, id uuid.UUID) (*paste.Paste, error) {
-	row, err := r.q.GetPasteById(ctx, id)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return mapPasteFromDB(row), nil
-}
-
-func (r *SqlcPasteRepository) GetAll(ctx context.Context, userId int64) ([]*paste.Paste, error) {
-	rows, err := r.q.GetPastes(ctx, userId)
-
-	if err != nil {
-		return nil, err
-	}
-
-	pastes := make([]*paste.Paste, 0, len(rows))
-
-	for _, row := range rows {
-		pastes = append(pastes, mapPasteFromDB(row))
-	}
-
-	return pastes, nil
-}
-
-func (r *SqlcPasteRepository) GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error) {
-	rows, err := r.q.GetUserPastes(ctx, userId)
-
-	if err != nil {
-		return nil, err
-	}
-
-	pastes := make([]*paste.Paste, 0, len(rows))
-
-	for _, row := range rows {
-		pastes = append(pastes, mapPasteFromDB(row))
-	}
-
-	return pastes, nil
 }
 
 func (r *SqlcPasteRepository) Create(ctx context.Context, u *paste.Paste) (*paste.Paste, error) {
@@ -100,6 +59,51 @@ func (r *SqlcPasteRepository) Create(ctx context.Context, u *paste.Paste) (*past
 	return mapPasteFromDB(row), nil
 }
 
+func (r *SqlcPasteRepository) GetByID(ctx context.Context, pasteUuid uuid.UUID, userId int64) (*paste.Paste, error) {
+	row, err := r.q.GetPasteById(ctx, dbgen.GetPasteByIdParams{
+		Uuid:   pasteUuid,
+		UserID: userId,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return mapPasteFromDB(row), nil
+}
+
+func (r *SqlcPasteRepository) GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error) {
+	rows, err := r.q.GetPastes(ctx, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	pastes := make([]*paste.Paste, 0, len(rows))
+
+	for _, row := range rows {
+		pastes = append(pastes, mapPasteFromDB(row))
+	}
+
+	return pastes, nil
+}
+
+func (r *SqlcPasteRepository) GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error) {
+	rows, err := r.q.GetUserPastes(ctx, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	pastes := make([]*paste.Paste, 0, len(rows))
+
+	for _, row := range rows {
+		pastes = append(pastes, mapPasteFromDB(row))
+	}
+
+	return pastes, nil
+}
+
 func (r *SqlcPasteRepository) Update(ctx context.Context, paste *paste.Paste) error {
 	var expire pgtype.Timestamptz
 	if paste.ExpiresAt != nil {
@@ -129,8 +133,11 @@ func (r *SqlcPasteRepository) Update(ctx context.Context, paste *paste.Paste) er
 	return nil
 }
 
-func (r *SqlcPasteRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	err := r.q.DeletePaste(ctx, id)
+func (r *SqlcPasteRepository) Delete(ctx context.Context, pasteUuid uuid.UUID, userId int64) error {
+	err := r.q.DeletePaste(ctx, dbgen.DeletePasteParams{
+		Uuid:   pasteUuid,
+		UserID: userId,
+	})
 
 	if err != nil {
 		return err

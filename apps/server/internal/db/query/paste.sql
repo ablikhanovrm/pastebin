@@ -1,6 +1,6 @@
 -- name: GetPasteById :one
 SELECT * FROM pastes as p
-WHERE p.uuid = $1
+WHERE p.uuid = $1 AND p.user_id = $2
 LIMIT 1;
 
 -- name: GetPastes :many
@@ -31,4 +31,4 @@ SET
 WHERE uuid = $1;
 
 -- name: DeletePaste :exec
-DELETE FROM pastes WHERE uuid = $1;
+DELETE FROM pastes WHERE uuid = $1 AND user_id = $2;
