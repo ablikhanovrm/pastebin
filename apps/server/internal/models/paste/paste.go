@@ -33,8 +33,9 @@ type Paste struct {
 	Uuid   uuid.UUID
 	UserId int64
 
-	Title string
-	S3Key string
+	Title   string
+	Content *string
+	S3Key   string
 
 	Syntax     Syntax
 	Visibility Visibility

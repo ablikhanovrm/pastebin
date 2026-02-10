@@ -2,6 +2,7 @@ package paste
 
 import (
 	"context"
+	"io"
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
 	"github.com/ablikhanovrm/pastebin/internal/models/paste"
@@ -17,6 +18,7 @@ type PasteService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*paste.Paste, error)
 	GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
 	GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
+	GetContent(ctx context.Context, pasteUuid string, userId int64) (io.ReadCloser, int64, error)
 	Update(ctx context.Context, paste *paste.Paste) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -63,13 +65,48 @@ func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (
 		return nil, err
 	}
 
+	if res == nil {
+		return nil, paste.ErrNotFound
+	}
+
 	return res, nil
 }
 
-func (s *Service) GetPastes(ctx context.Context) ([]*paste.Paste, error) {
+func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64) (io.ReadCloser, int64, error) {
 	repo := s.repo(s.db)
 
-	userId := ctx.Value("user_id").(int64)
+	parsedUuid, err := uuid.Parse(pasteUuid)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	res, err := repo.GetByID(ctx, parsedUuid, userId)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if res == nil {
+		return nil, 0, paste.ErrNotFound
+	}
+
+	body, length, err := s.s3Storage.Get(ctx, res.S3Key)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if length == nil {
+		return body, 0, nil
+	}
+
+	return body, *length, nil
+}
+
+func (s *Service) GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error) {
+	repo := s.repo(s.db)
+
 	pastes, err := repo.GetPastes(ctx, userId)
 
 	if err != nil {
@@ -79,11 +116,10 @@ func (s *Service) GetPastes(ctx context.Context) ([]*paste.Paste, error) {
 	return pastes, nil
 }
 
-func (s *Service) Delete(ctx context.Context, pasteUuid string) error {
+func (s *Service) Delete(ctx context.Context, pasteUuid string, userId int64) error {
 	repo := s.repo(s.db)
 
 	parsedUuid, err := uuid.Parse(pasteUuid)
-	userId := ctx.Value("user_id").(int64)
 
 	err = repo.Delete(ctx, parsedUuid, userId)
 
@@ -93,22 +129,21 @@ func (s *Service) Delete(ctx context.Context, pasteUuid string) error {
 	return nil
 }
 
-func (s *Service) Update(ctx context.Context, in UpdatePasteInput, pasteUuid string) (*paste.Paste, error) {
+func (s *Service) Update(ctx context.Context, in UpdatePasteInput, pasteUuid string, userId int64) error {
 	parsedUuid, err := uuid.Parse(pasteUuid)
-	userId := ctx.Value("user_id").(int64)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	foundPaste, err := s.GetByID(ctx, pasteUuid, userId)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if foundPaste == nil {
-		return nil, paste.ErrPasteNotFound
+		return paste.ErrNotFound
 	}
 
 	err = s.repo(s.db).Update(ctx, &paste.Paste{
@@ -120,5 +155,9 @@ func (s *Service) Update(ctx context.Context, in UpdatePasteInput, pasteUuid str
 		ExpiresAt:  in.ExpireAt,
 	})
 
-	return nil, nil
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

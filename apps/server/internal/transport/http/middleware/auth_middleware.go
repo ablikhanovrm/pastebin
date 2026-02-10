@@ -36,3 +36,10 @@ func AuthMiddleware(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func GetUserID(c *gin.Context) int64 {
+	v, _ := c.Get(ContextUserIDKey)
+
+	id, _ := v.(int64)
+	return id
+}
