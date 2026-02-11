@@ -15,7 +15,7 @@ func AuthMiddleware(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(401, gin.H{"error": "missing token"})
+			c.AbortWithStatusJSON(401, gin.H{"error": ErrUnauthorized.Error()})
 			return
 		}
 
@@ -24,11 +24,11 @@ func AuthMiddleware(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 		claims, err := jwtManager.Parse(tokenStr)
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) || strings.Contains(err.Error(), "expired") {
-				c.AbortWithStatusJSON(401, gin.H{"error": "token expired"})
+				c.AbortWithStatusJSON(401, gin.H{"error": ErrTokenExpired.Error()})
 				return
 			}
 
-			c.AbortWithStatusJSON(401, gin.H{"error": "invalid token"})
+			c.AbortWithStatusJSON(401, gin.H{"error": ErrInvalidToken.Error()})
 			return
 		}
 

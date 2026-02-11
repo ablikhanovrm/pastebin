@@ -3,6 +3,7 @@ package paste
 import (
 	"context"
 	"io"
+	"time"
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
 	"github.com/ablikhanovrm/pastebin/internal/models/paste"
@@ -19,7 +20,7 @@ type PasteService interface {
 	GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
 	GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
 	GetContent(ctx context.Context, pasteUuid string, userId int64) (io.ReadCloser, int64, error)
-	Update(ctx context.Context, paste *paste.Paste) error
+	Update(ctx context.Context, pasteUuid string, userId int64, in UpdatePasteInput) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -38,16 +39,39 @@ func (s *Service) repo(db dbgen.DBTX) *pasterepo.SqlcPasteRepository {
 	return pasterepo.NewSqlcPasteRepository(db, s.log)
 }
 
-func (s *Service) Create(ctx context.Context, paste *paste.Paste) (*paste.Paste, error) {
+func (s *Service) Create(ctx context.Context, userId int64, in CreatePasteInput) (*paste.Paste, error) {
 	repo := s.repo(s.db)
 
-	newPaste, err := repo.Create(ctx, paste)
+	newUuid := uuid.New()
+
+	s3Key := newUuid.String()
+	err := s.s3Storage.Upload(ctx, s3Key, in.Content)
+
+	if err != nil {
+		return nil, ErrUploadFailed
+	}
+
+	opts := &paste.Paste{
+		Uuid:       newUuid,
+		UserId:     userId,
+		Title:      in.Title,
+		Content:    nil,
+		S3Key:      newUuid.String(),
+		Syntax:     in.Syntax,
+		Visibility: in.Visibility,
+		MaxViews:   in.MaxViews,
+		ExpiresAt:  in.ExpireAt,
+		CreatedAt:  time.Time{},
+		UpdatedAt:  time.Time{},
+	}
+
+	createdPaste, err := repo.Create(ctx, userId, opts)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return newPaste, nil
+	return createdPaste, nil
 }
 
 func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (*paste.Paste, error) {
@@ -59,14 +83,10 @@ func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (
 		return nil, err
 	}
 
-	res, err := repo.GetByID(ctx, parsedUuid, userId)
+	res, err := repo.GetByID(ctx, userId, parsedUuid)
 
 	if err != nil {
 		return nil, err
-	}
-
-	if res == nil {
-		return nil, paste.ErrNotFound
 	}
 
 	return res, nil
@@ -81,7 +101,7 @@ func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64
 		return nil, 0, err
 	}
 
-	res, err := repo.GetByID(ctx, parsedUuid, userId)
+	res, err := repo.GetByID(ctx, userId, parsedUuid)
 
 	if err != nil {
 		return nil, 0, err
@@ -116,12 +136,24 @@ func (s *Service) GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, 
 	return pastes, nil
 }
 
+func (s *Service) GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error) {
+	repo := s.repo(s.db)
+
+	pastes, err := repo.GetMyPastes(ctx, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return pastes, nil
+}
+
 func (s *Service) Delete(ctx context.Context, pasteUuid string, userId int64) error {
 	repo := s.repo(s.db)
 
 	parsedUuid, err := uuid.Parse(pasteUuid)
 
-	err = repo.Delete(ctx, parsedUuid, userId)
+	err = repo.Delete(ctx, userId, parsedUuid)
 
 	if err != nil {
 		return err
@@ -129,7 +161,7 @@ func (s *Service) Delete(ctx context.Context, pasteUuid string, userId int64) er
 	return nil
 }
 
-func (s *Service) Update(ctx context.Context, in UpdatePasteInput, pasteUuid string, userId int64) error {
+func (s *Service) Update(ctx context.Context, pasteUuid string, userId int64, in UpdatePasteInput) error {
 	parsedUuid, err := uuid.Parse(pasteUuid)
 
 	if err != nil {
@@ -139,24 +171,24 @@ func (s *Service) Update(ctx context.Context, in UpdatePasteInput, pasteUuid str
 	foundPaste, err := s.GetByID(ctx, pasteUuid, userId)
 
 	if err != nil {
-		return err
+		return paste.ErrNotFound
 	}
 
 	if foundPaste == nil {
 		return paste.ErrNotFound
 	}
 
-	err = s.repo(s.db).Update(ctx, &paste.Paste{
+	err = s.repo(s.db).Update(ctx, userId, &paste.Paste{
 		Uuid:       parsedUuid,
 		Title:      in.Title,
-		Syntax:     paste.Syntax(in.Syntax),
-		Visibility: paste.Visibility(in.Visibility),
+		Syntax:     in.Syntax,
+		Visibility: in.Visibility,
 		MaxViews:   in.MaxViews,
 		ExpiresAt:  in.ExpireAt,
 	})
 
 	if err != nil {
-		return err
+		return ErrUpdate
 	}
 
 	return nil

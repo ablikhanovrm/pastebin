@@ -108,7 +108,7 @@ func (q *Queries) GetPasteById(ctx context.Context, arg GetPasteByIdParams) (Pas
 const getPastes = `-- name: GetPastes :many
 SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
 WHERE p.visibility='public'
-   OR p.user_id=$1
+   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
 ORDER BY p.created_at DESC
 `
 
@@ -148,7 +148,7 @@ func (q *Queries) GetPastes(ctx context.Context, userID int64) ([]Paste, error) 
 
 const getUserPastes = `-- name: GetUserPastes :many
 SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
-WHERE p.user_id = $1
+WHERE p.user_id = $1 AND (expires_at IS NULL OR expires_at > now())
 ORDER BY p.created_at DESC
 `
 

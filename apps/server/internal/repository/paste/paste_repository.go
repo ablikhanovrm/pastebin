@@ -11,12 +11,12 @@ import (
 )
 
 type PasteRepository interface {
-	Create(ctx context.Context, u *paste.Paste) (*paste.Paste, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*paste.Paste, error)
+	Create(ctx context.Context, userId int64, u *paste.Paste) (*paste.Paste, error)
+	GetByID(ctx context.Context, userId int64, id uuid.UUID) (*paste.Paste, error)
 	GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
 	GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
-	Update(ctx context.Context, paste *paste.Paste) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Update(ctx context.Context, userId int64, paste *paste.Paste) error
+	Delete(ctx context.Context, userId int64, id uuid.UUID) error
 }
 
 type SqlcPasteRepository struct {
@@ -28,7 +28,7 @@ func NewSqlcPasteRepository(db dbgen.DBTX, log zerolog.Logger) *SqlcPasteReposit
 	return &SqlcPasteRepository{q: dbgen.New(db), log: log}
 }
 
-func (r *SqlcPasteRepository) Create(ctx context.Context, u *paste.Paste) (*paste.Paste, error) {
+func (r *SqlcPasteRepository) Create(ctx context.Context, userId int64, u *paste.Paste) (*paste.Paste, error) {
 	var expire pgtype.Timestamptz
 	if u.ExpiresAt != nil {
 		expire = pgtype.Timestamptz{
@@ -43,7 +43,7 @@ func (r *SqlcPasteRepository) Create(ctx context.Context, u *paste.Paste) (*past
 
 	row, err := r.q.CreatePaste(ctx, dbgen.CreatePasteParams{
 		Uuid:       u.Uuid,
-		UserID:     u.UserId,
+		UserID:     userId,
 		Title:      u.Title,
 		S3Key:      u.S3Key,
 		MaxViews:   u.MaxViews,
@@ -59,7 +59,7 @@ func (r *SqlcPasteRepository) Create(ctx context.Context, u *paste.Paste) (*past
 	return mapPasteFromDB(row), nil
 }
 
-func (r *SqlcPasteRepository) GetByID(ctx context.Context, pasteUuid uuid.UUID, userId int64) (*paste.Paste, error) {
+func (r *SqlcPasteRepository) GetByID(ctx context.Context, userId int64, pasteUuid uuid.UUID) (*paste.Paste, error) {
 	row, err := r.q.GetPasteById(ctx, dbgen.GetPasteByIdParams{
 		Uuid:   pasteUuid,
 		UserID: userId,
@@ -104,7 +104,7 @@ func (r *SqlcPasteRepository) GetMyPastes(ctx context.Context, userId int64) ([]
 	return pastes, nil
 }
 
-func (r *SqlcPasteRepository) Update(ctx context.Context, paste *paste.Paste) error {
+func (r *SqlcPasteRepository) Update(ctx context.Context, userId int64, paste *paste.Paste) error {
 	var expire pgtype.Timestamptz
 	if paste.ExpiresAt != nil {
 		expire = pgtype.Timestamptz{
@@ -133,7 +133,7 @@ func (r *SqlcPasteRepository) Update(ctx context.Context, paste *paste.Paste) er
 	return nil
 }
 
-func (r *SqlcPasteRepository) Delete(ctx context.Context, pasteUuid uuid.UUID, userId int64) error {
+func (r *SqlcPasteRepository) Delete(ctx context.Context, userId int64, pasteUuid uuid.UUID) error {
 	err := r.q.DeletePaste(ctx, dbgen.DeletePasteParams{
 		Uuid:   pasteUuid,
 		UserID: userId,

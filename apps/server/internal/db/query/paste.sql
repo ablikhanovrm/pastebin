@@ -6,12 +6,12 @@ LIMIT 1;
 -- name: GetPastes :many
 SELECT * FROM pastes as p
 WHERE p.visibility='public'
-   OR p.user_id=$1
+   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
 ORDER BY p.created_at DESC;
 
 -- name: GetUserPastes :many
 SELECT * FROM pastes as p
-WHERE p.user_id = $1
+WHERE p.user_id = $1 AND (expires_at IS NULL OR expires_at > now())
 ORDER BY p.created_at DESC;
 
 -- name: CreatePaste :one

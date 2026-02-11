@@ -34,7 +34,7 @@ func (r *SqlcUserRepository) FindByEmail(ctx context.Context, email string) (*us
 	foundUser, err := r.q.GetUserByEmail(ctx, email)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, user.ErrUserNotFound
+		return nil, user.ErrNotFound
 	}
 
 	if err != nil {
@@ -48,7 +48,7 @@ func (r *SqlcUserRepository) FindByID(ctx context.Context, id int64) (*user.User
 	foundUser, err := r.q.GetUserById(ctx, id)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, user.ErrUserNotFound
+		return nil, user.ErrNotFound
 	}
 
 	if err != nil {

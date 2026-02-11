@@ -41,21 +41,15 @@ func (s *Service) Upload(ctx context.Context, key string, content string) error 
 }
 
 func (s *Service) Get(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
-	res, _ := s.client.GetObject(ctx, &s3.GetObjectInput{
+	res, err := s.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),
 	})
 
-	//if err != nil {
-	//	return "", err
-	//}
-	//defer res.Body.Close()
+	if err != nil {
+		return nil, nil, err
 
-	//data, err := io.ReadAll(io.LimitReader(res.Body, 5<<20)) // 5 MB
-
-	//if err != nil {
-	//	return "", err
-	//}
+	}
 
 	return res.Body, res.ContentLength, nil
 }

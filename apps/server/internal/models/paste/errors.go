@@ -5,5 +5,5 @@ import "errors"
 var (
 	ErrNotFound  = errors.New("paste not found")
 	ErrForbidden = errors.New("forbidden")
-	ErrInvalidID = errors.New("invalid id")
+	ErrExpired   = errors.New("paste expired")
 )
