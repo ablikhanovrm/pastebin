@@ -8,7 +8,7 @@ import (
 func InitPasteRoutes(rg *gin.RouterGroup, h *handler.Handler) {
 	paste := rg.Group("/paste")
 	{
-		paste.GET("/", h.GetPastes)
+		paste.GET("", h.GetPastes)
 		paste.GET("/my", h.GetMyPastes)
 		paste.GET("/:id", h.GetPaste)
 		paste.POST("/", h.CreatePaste)

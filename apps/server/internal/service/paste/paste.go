@@ -17,8 +17,8 @@ import (
 type PasteService interface {
 	Create(ctx context.Context, u *paste.Paste) (*paste.Paste, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*paste.Paste, error)
-	GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
-	GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
+	GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, *time.Time, error)
+	GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, *time.Time, error)
 	GetContent(ctx context.Context, pasteUuid string, userId int64) (io.ReadCloser, int64, error)
 	Update(ctx context.Context, pasteUuid string, userId int64, in UpdatePasteInput) error
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -124,28 +124,69 @@ func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64
 	return body, *length, nil
 }
 
-func (s *Service) GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error) {
+func (s *Service) GetPastes(ctx context.Context, userId int64, cursor *time.Time, limit int32) ([]*paste.Paste, *time.Time, error) {
 	repo := s.repo(s.db)
 
-	pastes, err := repo.GetPastes(ctx, userId)
+	var pastes []*paste.Paste
+	var err error
 
-	if err != nil {
-		return nil, err
+	if cursor == nil {
+		pastes, err = repo.GetPastesFirstPage(ctx, pasterepo.GetPastesFirstPageParams{
+			UserId: userId,
+			Limit:  limit,
+		})
+	} else {
+		pastes, err = repo.GetPastesAfterCursor(ctx, pasterepo.GetPastesAfterCursorParams{
+			Cursor: *cursor,
+			Limit:  limit,
+			UserId: userId,
+		})
 	}
 
-	return pastes, nil
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(pastes) == 0 {
+		return pastes, nil, nil
+	}
+
+	next := pastes[len(pastes)-1].CreatedAt
+
+	return pastes, &next, nil
+
 }
 
-func (s *Service) GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error) {
+func (s *Service) GetMyPastes(ctx context.Context, userId int64, cursor *time.Time, limit int32) ([]*paste.Paste, *time.Time, error) {
 	repo := s.repo(s.db)
 
-	pastes, err := repo.GetMyPastes(ctx, userId)
+	var pastes []*paste.Paste
+	var err error
 
-	if err != nil {
-		return nil, err
+	if cursor == nil {
+		pastes, err = repo.GetPastesFirstPage(ctx, pasterepo.GetPastesFirstPageParams{
+			UserId: userId,
+			Limit:  limit,
+		})
+	} else {
+		pastes, err = repo.GetPastesAfterCursor(ctx, pasterepo.GetPastesAfterCursorParams{
+			Cursor: *cursor,
+			Limit:  limit,
+			UserId: userId,
+		})
 	}
 
-	return pastes, nil
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(pastes) == 0 {
+		return pastes, nil, nil
+	}
+
+	next := pastes[len(pastes)-1].CreatedAt
+
+	return pastes, &next, nil
 }
 
 func (s *Service) Delete(ctx context.Context, pasteUuid string, userId int64) error {

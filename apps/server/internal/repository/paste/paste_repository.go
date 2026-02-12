@@ -13,8 +13,10 @@ import (
 type PasteRepository interface {
 	Create(ctx context.Context, userId int64, u *paste.Paste) (*paste.Paste, error)
 	GetByID(ctx context.Context, userId int64, id uuid.UUID) (*paste.Paste, error)
-	GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
-	GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error)
+	GetPastesFirstPage(ctx context.Context, params GetPastesFirstPageParams) ([]*paste.Paste, error)
+	GetPastesAfterCursor(ctx context.Context, params GetPastesAfterCursorParams) ([]*paste.Paste, error)
+	GetMyPastesFirstPage(ctx context.Context, params GetMyPastesFirstPageParams) ([]*paste.Paste, error)
+	GetMyPastesAfterCursor(ctx context.Context, params GetMyPastesAfterCursorParams) ([]*paste.Paste, error)
 	Update(ctx context.Context, userId int64, paste *paste.Paste) error
 	Delete(ctx context.Context, userId int64, id uuid.UUID) error
 }
@@ -72,8 +74,11 @@ func (r *SqlcPasteRepository) GetByID(ctx context.Context, userId int64, pasteUu
 	return mapPasteFromDB(row), nil
 }
 
-func (r *SqlcPasteRepository) GetPastes(ctx context.Context, userId int64) ([]*paste.Paste, error) {
-	rows, err := r.q.GetPastes(ctx, userId)
+func (r *SqlcPasteRepository) GetPastesFirstPage(ctx context.Context, params GetPastesFirstPageParams) ([]*paste.Paste, error) {
+	rows, err := r.q.GetPastesFirstPage(ctx, dbgen.GetPastesFirstPageParams{
+		UserID: params.UserId,
+		Limit:  params.Limit,
+	})
 
 	if err != nil {
 		return nil, err
@@ -88,8 +93,54 @@ func (r *SqlcPasteRepository) GetPastes(ctx context.Context, userId int64) ([]*p
 	return pastes, nil
 }
 
-func (r *SqlcPasteRepository) GetMyPastes(ctx context.Context, userId int64) ([]*paste.Paste, error) {
-	rows, err := r.q.GetUserPastes(ctx, userId)
+func (r *SqlcPasteRepository) GetPastesAfterCursor(ctx context.Context, params GetPastesAfterCursorParams) ([]*paste.Paste, error) {
+	rows, err := r.q.GetPastesAfterCursor(ctx, dbgen.GetPastesAfterCursorParams{
+		UserID:    params.UserId,
+		Limit:     params.Limit,
+		CreatedAt: pgtype.Timestamptz{Time: params.Cursor, Valid: true},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	pastes := make([]*paste.Paste, 0, len(rows))
+
+	for _, row := range rows {
+		pastes = append(pastes, mapPasteFromDB(row))
+	}
+
+	return pastes, nil
+}
+
+func (r *SqlcPasteRepository) GetMyPastesFirstPage(ctx context.Context, params GetMyPastesFirstPageParams) ([]*paste.Paste, error) {
+	rows, err := r.q.GetUserPastesFirstPage(ctx, dbgen.GetUserPastesFirstPageParams{
+		UserID: params.UserId,
+		Limit:  params.Limit,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	pastes := make([]*paste.Paste, 0, len(rows))
+
+	for _, row := range rows {
+		pastes = append(pastes, mapPasteFromDB(row))
+	}
+
+	return pastes, nil
+}
+
+func (r *SqlcPasteRepository) GetMyPastesAfterCursor(ctx context.Context, params GetMyPastesAfterCursorParams) ([]*paste.Paste, error) {
+	rows, err := r.q.GetUserPastesAfterCursor(ctx, dbgen.GetUserPastesAfterCursorParams{
+		UserID: params.UserId,
+		CreatedAt: pgtype.Timestamptz{
+			Time:  params.Cursor,
+			Valid: true,
+		},
+		Limit: params.Limit,
+	})
 
 	if err != nil {
 		return nil, err

@@ -3,16 +3,33 @@ SELECT * FROM pastes as p
 WHERE p.uuid = $1 AND p.user_id = $2
 LIMIT 1;
 
--- name: GetPastes :many
+-- name: GetPastesFirstPage :many
 SELECT * FROM pastes as p
 WHERE p.visibility='public'
    OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
-ORDER BY p.created_at DESC;
+ORDER BY created_at DESC
+LIMIT $2;
 
--- name: GetUserPastes :many
+-- name: GetPastesAfterCursor :many
 SELECT * FROM pastes as p
-WHERE p.user_id = $1 AND (expires_at IS NULL OR expires_at > now())
-ORDER BY p.created_at DESC;
+WHERE p.visibility='public'
+   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now()) AND created_at < $2
+ORDER BY p.created_at DESC
+LIMIT $3;
+
+
+-- name: GetUserPastesFirstPage :many
+SELECT * FROM pastes as p
+WHERE p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
+ORDER BY created_at DESC
+LIMIT $2;
+
+-- name: GetUserPastesAfterCursor :many
+SELECT * FROM pastes as p
+WHERE p.user_id=$1 AND (expires_at IS NULL OR expires_at > now()) AND created_at < $2
+ORDER BY p.created_at DESC
+LIMIT $3;
+
 
 -- name: CreatePaste :one
 INSERT INTO pastes (uuid, user_id, title, s3_key, syntax, max_views, visibility, expire_at)

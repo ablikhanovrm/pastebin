@@ -2,6 +2,8 @@ package handler
 
 import (
 	"errors"
+	"strconv"
+	"time"
 
 	"github.com/ablikhanovrm/pastebin/internal/models/paste"
 	pasteService "github.com/ablikhanovrm/pastebin/internal/service/paste"
@@ -10,26 +12,64 @@ import (
 )
 
 func (h *Handler) GetPastes(c *gin.Context) {
-	pastes, err := h.services.Paste.GetPastes(c.Request.Context(), middleware.GetUserID(c))
+	limit := int32(20)
+	if l := c.Query("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil {
+			limit = int32(v)
+		}
+	}
 
+	var cursor *time.Time
+	if cur := c.Query("cursor"); cur != "" {
+		t, err := time.Parse(time.RFC3339, cur)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "invalid cursor"})
+			return
+		}
+		cursor = &t
+	}
+
+	items, nextCursor, err := h.services.Paste.GetPastes(c.Request.Context(), middleware.GetUserID(c), cursor, limit)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, pastes)
+	c.JSON(200, gin.H{
+		"items":       items,
+		"next_cursor": nextCursor,
+	})
 	return
 }
 
 func (h *Handler) GetMyPastes(c *gin.Context) {
-	pastes, err := h.services.Paste.GetMyPastes(c.Request.Context(), middleware.GetUserID(c))
+	limit := int32(20)
+	if l := c.Query("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil {
+			limit = int32(v)
+		}
+	}
 
+	var cursor *time.Time
+	if cur := c.Query("cursor"); cur != "" {
+		t, err := time.Parse(time.RFC3339, cur)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "invalid cursor"})
+			return
+		}
+		cursor = &t
+	}
+
+	items, nextCursor, err := h.services.Paste.GetPastes(c.Request.Context(), middleware.GetUserID(c), cursor, limit)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, pastes)
+	c.JSON(200, gin.H{
+		"items":       items,
+		"next_cursor": nextCursor,
+	})
 	return
 }
 

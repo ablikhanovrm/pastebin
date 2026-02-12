@@ -105,15 +105,22 @@ func (q *Queries) GetPasteById(ctx context.Context, arg GetPasteByIdParams) (Pas
 	return i, err
 }
 
-const getPastes = `-- name: GetPastes :many
+const getPastesAfterCursor = `-- name: GetPastesAfterCursor :many
 SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
 WHERE p.visibility='public'
-   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
+   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now()) AND created_at < $2
 ORDER BY p.created_at DESC
+LIMIT $3
 `
 
-func (q *Queries) GetPastes(ctx context.Context, userID int64) ([]Paste, error) {
-	rows, err := q.db.Query(ctx, getPastes, userID)
+type GetPastesAfterCursorParams struct {
+	UserID    int64
+	CreatedAt pgtype.Timestamptz
+	Limit     int32
+}
+
+func (q *Queries) GetPastesAfterCursor(ctx context.Context, arg GetPastesAfterCursorParams) ([]Paste, error) {
+	rows, err := q.db.Query(ctx, getPastesAfterCursor, arg.UserID, arg.CreatedAt, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -146,14 +153,114 @@ func (q *Queries) GetPastes(ctx context.Context, userID int64) ([]Paste, error) 
 	return items, nil
 }
 
-const getUserPastes = `-- name: GetUserPastes :many
+const getPastesFirstPage = `-- name: GetPastesFirstPage :many
 SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
-WHERE p.user_id = $1 AND (expires_at IS NULL OR expires_at > now())
-ORDER BY p.created_at DESC
+WHERE p.visibility='public'
+   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
+ORDER BY created_at DESC
+LIMIT $2
 `
 
-func (q *Queries) GetUserPastes(ctx context.Context, userID int64) ([]Paste, error) {
-	rows, err := q.db.Query(ctx, getUserPastes, userID)
+type GetPastesFirstPageParams struct {
+	UserID int64
+	Limit  int32
+}
+
+func (q *Queries) GetPastesFirstPage(ctx context.Context, arg GetPastesFirstPageParams) ([]Paste, error) {
+	rows, err := q.db.Query(ctx, getPastesFirstPage, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Paste
+	for rows.Next() {
+		var i Paste
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.UserID,
+			&i.Title,
+			&i.S3Key,
+			&i.ViewsCount,
+			&i.MaxViews,
+			&i.Status,
+			&i.Syntax,
+			&i.Visibility,
+			&i.ExpireAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserPastesAfterCursor = `-- name: GetUserPastesAfterCursor :many
+SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
+WHERE p.user_id=$1 AND (expires_at IS NULL OR expires_at > now()) AND created_at < $2
+ORDER BY p.created_at DESC
+LIMIT $3
+`
+
+type GetUserPastesAfterCursorParams struct {
+	UserID    int64
+	CreatedAt pgtype.Timestamptz
+	Limit     int32
+}
+
+func (q *Queries) GetUserPastesAfterCursor(ctx context.Context, arg GetUserPastesAfterCursorParams) ([]Paste, error) {
+	rows, err := q.db.Query(ctx, getUserPastesAfterCursor, arg.UserID, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Paste
+	for rows.Next() {
+		var i Paste
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.UserID,
+			&i.Title,
+			&i.S3Key,
+			&i.ViewsCount,
+			&i.MaxViews,
+			&i.Status,
+			&i.Syntax,
+			&i.Visibility,
+			&i.ExpireAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserPastesFirstPage = `-- name: GetUserPastesFirstPage :many
+SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
+WHERE p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
+ORDER BY created_at DESC
+LIMIT $2
+`
+
+type GetUserPastesFirstPageParams struct {
+	UserID int64
+	Limit  int32
+}
+
+func (q *Queries) GetUserPastesFirstPage(ctx context.Context, arg GetUserPastesFirstPageParams) ([]Paste, error) {
+	rows, err := q.db.Query(ctx, getUserPastesFirstPage, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
