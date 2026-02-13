@@ -12,6 +12,7 @@ type Config struct {
 	Server HttpServer     `yaml:"http_server"`
 	DB     DatabaseConfig `yaml:"db"`
 	S3     S3Config       `yaml:"s3"`
+	Redis  RedisConfig    `yaml:"redis"`
 }
 
 type HttpServer struct {
@@ -41,12 +42,18 @@ type S3Config struct {
 	SecretKey string `yaml:"secret_key" env-default:"IO24QaIQ1i0xROcnKF2fwO77CyI7E0TXmFs88ffq" env:"S3_SECRET_KEY"`
 }
 
+type RedisConfig struct {
+	Host     string `yaml:"host" env-default:"localhost" env:"REDIS_HOST"`
+	Port     string `yaml:"port" env-default:"6379" env:"REDIS_PORT"`
+	Password string `yaml:"password" env-default:"Qwerty12345" env:"REDIS_PASSWORD"`
+}
+
 func GetConfig(configPath string) *Config {
 	var cfg Config
 
 	err := cleanenv.ReadConfig(configPath, &cfg)
 	if err != nil {
-		log.Fatalf("failed to init config", err.Error())
+		log.Fatalf("failed to init config: %v", err.Error())
 	}
 
 	return &cfg

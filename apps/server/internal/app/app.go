@@ -9,6 +9,7 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/config"
 	"github.com/ablikhanovrm/pastebin/internal/logging"
 	"github.com/ablikhanovrm/pastebin/internal/repository"
+	cacheRepo "github.com/ablikhanovrm/pastebin/internal/repository/cache"
 	"github.com/ablikhanovrm/pastebin/internal/service"
 	"github.com/ablikhanovrm/pastebin/internal/service/storage"
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/handler"
@@ -31,7 +32,11 @@ func Run(configPath string) {
 
 	repo := repository.NewRepository(db.Pool, logger.With().Str("layer", "repository").Logger())
 	jwtManager := jwt.New(newConfig.Server.JwtSecret)
-	services := service.NewServices(repo, jwtManager, db.Pool, s3Storage, logger.With().Str("layer", "service").Logger())
+
+	redisClient := cacheRepo.NewRedis(newConfig.Redis, logger.With().Str("layer", "redis_client").Logger())
+	cache := cacheRepo.NewRedisCache(redisClient, logger.With().Str("layer", "cache").Logger())
+
+	services := service.NewServices(repo, jwtManager, db.Pool, s3Storage, cache, logger.With().Str("layer", "service").Logger())
 
 	handlerLogger := logger.With().Str("layer", "handler").Logger()
 	newHandler := handler.NewHandler(services, &newConfig.Server, handlerLogger)

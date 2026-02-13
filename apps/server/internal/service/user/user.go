@@ -5,6 +5,7 @@ import (
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
 	"github.com/ablikhanovrm/pastebin/internal/models/user"
+	"github.com/ablikhanovrm/pastebin/internal/repository/cache"
 	userrepo "github.com/ablikhanovrm/pastebin/internal/repository/user"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
@@ -16,14 +17,15 @@ type UserService interface {
 }
 
 type Service struct {
-	log zerolog.Logger
-	db  *pgxpool.Pool
+	db    *pgxpool.Pool
+	cache *cache.RedisCache
+	log   zerolog.Logger
+}
+
+func NewUserService(db *pgxpool.Pool, cache *cache.RedisCache, log zerolog.Logger) *Service {
+	return &Service{db: db, cache: cache, log: log}
 }
 
 func (s *Service) repo(db dbgen.DBTX) *userrepo.SqlcUserRepository {
 	return userrepo.NewSqlcUserRepository(db, s.log)
-}
-
-func NewUserService(db *pgxpool.Pool, log zerolog.Logger) *Service {
-	return &Service{db: db, log: log}
 }

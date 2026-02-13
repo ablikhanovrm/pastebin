@@ -23,3 +23,7 @@ s3:
   secret_key: "IO24QaIQ1i0xROcnKF2fwO77CyI7E0TXmFs88ffq"
 #  use_ssl: false
   region: "us-east-1"
+redis:
+  host: "redis"
+  port: "6379"
+  password: "Qwerty12345"

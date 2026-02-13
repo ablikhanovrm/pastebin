@@ -7,6 +7,7 @@ import (
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
 	"github.com/ablikhanovrm/pastebin/internal/models/paste"
+	"github.com/ablikhanovrm/pastebin/internal/repository/cache"
 	pasterepo "github.com/ablikhanovrm/pastebin/internal/repository/paste"
 	"github.com/ablikhanovrm/pastebin/internal/service/storage"
 	"github.com/google/uuid"
@@ -27,11 +28,12 @@ type PasteService interface {
 type Service struct {
 	db        *pgxpool.Pool
 	s3Storage *storage.Service
+	cache     *cache.RedisCache
 	log       zerolog.Logger
 }
 
-func NewPasteService(db *pgxpool.Pool, s3Storage *storage.Service, log zerolog.Logger) *Service {
-	return &Service{db: db, s3Storage: s3Storage, log: log}
+func NewPasteService(db *pgxpool.Pool, s3Storage *storage.Service, cache *cache.RedisCache, log zerolog.Logger) *Service {
+	return &Service{db: db, s3Storage: s3Storage, cache: cache, log: log}
 }
 
 // repo helper

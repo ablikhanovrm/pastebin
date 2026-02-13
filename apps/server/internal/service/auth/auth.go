@@ -9,6 +9,7 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/models/auth"
 	"github.com/ablikhanovrm/pastebin/internal/models/user"
 	authrepo "github.com/ablikhanovrm/pastebin/internal/repository/auth"
+	"github.com/ablikhanovrm/pastebin/internal/repository/cache"
 	userrepo "github.com/ablikhanovrm/pastebin/internal/repository/user"
 	"github.com/ablikhanovrm/pastebin/pkg/hash"
 	"github.com/ablikhanovrm/pastebin/pkg/jwt"
@@ -30,6 +31,7 @@ type Service struct {
 	users  userrepo.UserRepository
 	tokens *jwt.Manager
 	db     *pgxpool.Pool
+	cache  *cache.RedisCache
 	log    zerolog.Logger
 }
 
@@ -37,6 +39,7 @@ func NewAuthService(
 	users userrepo.UserRepository,
 	tokens *jwt.Manager,
 	db *pgxpool.Pool,
+	cache *cache.RedisCache,
 	log zerolog.Logger,
 ) *Service {
 	return &Service{
@@ -44,6 +47,7 @@ func NewAuthService(
 		tokens: tokens,
 		db:     db,
 		log:    log,
+		cache:  cache,
 	}
 }
 

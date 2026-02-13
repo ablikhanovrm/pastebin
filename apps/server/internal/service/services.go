@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/ablikhanovrm/pastebin/internal/repository"
+	"github.com/ablikhanovrm/pastebin/internal/repository/cache"
 	"github.com/ablikhanovrm/pastebin/internal/service/auth"
 	"github.com/ablikhanovrm/pastebin/internal/service/paste"
 	"github.com/ablikhanovrm/pastebin/internal/service/storage"
@@ -22,6 +23,7 @@ func NewServices(
 	jwtManager *jwt.Manager,
 	db *pgxpool.Pool,
 	s3Storage *storage.Service,
+	cache *cache.RedisCache,
 	logger zerolog.Logger,
 ) *Services {
 	authLogger := logger.With().Str("service", "auth").Logger()
@@ -29,8 +31,8 @@ func NewServices(
 	pasteLogger := logger.With().Str("service", "paste").Logger()
 
 	return &Services{
-		Auth:  auth.NewAuthService(repo.User, jwtManager, db, authLogger),
-		User:  user.NewUserService(db, userLogger),
-		Paste: paste.NewPasteService(db, s3Storage, pasteLogger),
+		Auth:  auth.NewAuthService(repo.User, jwtManager, db, cache, authLogger),
+		User:  user.NewUserService(db, cache, userLogger),
+		Paste: paste.NewPasteService(db, s3Storage, cache, pasteLogger),
 	}
 }
