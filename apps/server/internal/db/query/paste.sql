@@ -36,16 +36,17 @@ INSERT INTO pastes (uuid, user_id, title, s3_key, syntax, max_views, visibility,
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
--- name: UpdatePaste :exec
+-- name: UpdatePaste :one
 UPDATE pastes
 SET
-    title = $2,
-    syntax = $3,
-    visibility = $4,
-    max_views = $5,
-    expire_at = $6,
+    title = $3,
+    syntax = $4,
+    visibility = $5,
+    max_views = $6,
+    expire_at = $7,
     updated_at = now()
-WHERE uuid = $1;
+WHERE uuid = $1 AND user_id = $2
+RETURNING *;
 
 -- name: DeletePaste :exec
 DELETE FROM pastes WHERE uuid = $1 AND user_id = $2;

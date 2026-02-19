@@ -1,6 +1,7 @@
 package paste
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type PasteService interface {
@@ -46,13 +48,6 @@ func (s *Service) Create(ctx context.Context, userId int64, in CreatePasteInput)
 
 	newUuid := uuid.New()
 
-	s3Key := newUuid.String()
-	err := s.s3Storage.Upload(ctx, s3Key, in.Content)
-
-	if err != nil {
-		return nil, ErrUploadFailed
-	}
-
 	opts := &paste.Paste{
 		Uuid:       newUuid,
 		UserId:     userId,
@@ -73,8 +68,24 @@ func (s *Service) Create(ctx context.Context, userId int64, in CreatePasteInput)
 		return nil, err
 	}
 
+	s3Key := newUuid.String()
+
+	if err := s.s3Storage.Upload(ctx, s3Key, in.Content); err != nil {
+		// cleanup db if s3 upload failed
+		if delErr := repo.Delete(ctx, userId, newUuid); delErr != nil {
+			log.Error().Err(delErr).Msg("failed cleanup paste after s3 fail")
+		}
+		return nil, ErrUploadFailed
+	}
+
+	go func() {
+		if err := s.cache.SetPaste(ctx, opts); err != nil {
+			log.Error().Err(err).Msg("failed save paste to cache after creating")
+		}
+	}()
+
 	return createdPaste, nil
-}
+} // cache done
 
 func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (*paste.Paste, error) {
 	repo := s.repo(s.db)
@@ -85,14 +96,30 @@ func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (
 		return nil, err
 	}
 
-	res, err := repo.GetByID(ctx, userId, parsedUuid)
+	res, err := s.cache.GetPaste(ctx, pasteUuid)
+
+	if err != nil {
+		s.log.Warn().Err(err).Msg("cache get failed")
+	}
+
+	if res != nil {
+		return res, nil
+	}
+
+	res, err = repo.GetByID(ctx, userId, parsedUuid)
 
 	if err != nil {
 		return nil, err
 	}
 
+	go func() {
+		if err = s.cache.SetPaste(context.Background(), res); err != nil {
+			s.log.Warn().Err(err).Msg("failed to set paste in cache")
+		}
+	}()
+
 	return res, nil
-}
+} // cache done
 
 func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64) (io.ReadCloser, int64, error) {
 	repo := s.repo(s.db)
@@ -101,6 +128,16 @@ func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64
 
 	if err != nil {
 		return nil, 0, err
+	}
+
+	content, err := s.cache.GetPasteContent(ctx, pasteUuid)
+
+	if err != nil {
+		s.log.Warn().Err(err).Msg("cache get failed")
+	}
+
+	if len(content) > 0 {
+		return io.NopCloser(bytes.NewReader(content)), int64(len(content)), nil
 	}
 
 	res, err := repo.GetByID(ctx, userId, parsedUuid)
@@ -118,13 +155,25 @@ func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64
 	if err != nil {
 		return nil, 0, err
 	}
+	buf := &bytes.Buffer{}
+	tee := io.TeeReader(body, buf)
+
+	// возвращаем tee как основной reader
+	reader := io.NopCloser(tee)
+
+	// кешируем ПОСЛЕ того как handler дочитает
+	go func() {
+		data, err := io.ReadAll(buf) // <--
+		if err == nil && len(data) > 0 {
+			_ = s.cache.SetPasteContent(context.Background(), pasteUuid, data)
+		}
+	}()
 
 	if length == nil {
-		return body, 0, nil
+		return reader, 0, nil
 	}
-
-	return body, *length, nil
-}
+	return reader, *length, nil
+} // cache done
 
 func (s *Service) GetPastes(ctx context.Context, userId int64, cursor *time.Time, limit int32) ([]*paste.Paste, *time.Time, error) {
 	repo := s.repo(s.db)
@@ -201,27 +250,28 @@ func (s *Service) Delete(ctx context.Context, pasteUuid string, userId int64) er
 	if err != nil {
 		return err
 	}
-	return nil
-}
 
-func (s *Service) Update(ctx context.Context, pasteUuid string, userId int64, in UpdatePasteInput) error {
-	parsedUuid, err := uuid.Parse(pasteUuid)
+	err = s.s3Storage.Delete(ctx, pasteUuid)
 
 	if err != nil {
 		return err
 	}
 
-	foundPaste, err := s.GetByID(ctx, pasteUuid, userId)
+	go func() {
+		_ = s.cache.DeletePaste(context.Background(), pasteUuid)
+		_ = s.cache.InvalidatePasteLists(context.Background())
+	}()
 
+	return nil
+}
+
+func (s *Service) Update(ctx context.Context, pasteUuid string, userId int64, in UpdatePasteInput) error {
+	parsedUuid, err := uuid.Parse(pasteUuid)
 	if err != nil {
-		return paste.ErrNotFound
+		return err
 	}
 
-	if foundPaste == nil {
-		return paste.ErrNotFound
-	}
-
-	err = s.repo(s.db).Update(ctx, userId, &paste.Paste{
+	updated, err := s.repo(s.db).Update(ctx, userId, &paste.Paste{
 		Uuid:       parsedUuid,
 		Title:      in.Title,
 		Syntax:     in.Syntax,
@@ -231,8 +281,22 @@ func (s *Service) Update(ctx context.Context, pasteUuid string, userId int64, in
 	})
 
 	if err != nil {
-		return ErrUpdate
+		return err
 	}
 
+	go func(p *paste.Paste) {
+		err := s.cache.SetPaste(context.Background(), p)
+
+		if err != nil {
+			s.log.Warn().Err(err).Msg("failed to set paste in cache")
+		}
+
+		err = s.cache.InvalidatePasteLists(context.Background())
+
+		if err != nil {
+			s.log.Warn().Err(err).Msg("failed to invalidate paste lists")
+		}
+	}(updated)
+
 	return nil
-}
+} // cache done

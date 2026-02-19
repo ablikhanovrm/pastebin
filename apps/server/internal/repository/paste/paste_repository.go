@@ -2,10 +2,12 @@ package paste
 
 import (
 	"context"
+	"errors"
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
 	"github.com/ablikhanovrm/pastebin/internal/models/paste"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
 )
@@ -155,11 +157,11 @@ func (r *SqlcPasteRepository) GetMyPastesAfterCursor(ctx context.Context, params
 	return pastes, nil
 }
 
-func (r *SqlcPasteRepository) Update(ctx context.Context, userId int64, paste *paste.Paste) error {
+func (r *SqlcPasteRepository) Update(ctx context.Context, userId int64, opts *paste.Paste) (*paste.Paste, error) {
 	var expire pgtype.Timestamptz
-	if paste.ExpiresAt != nil {
+	if opts.ExpiresAt != nil {
 		expire = pgtype.Timestamptz{
-			Time:  *paste.ExpiresAt,
+			Time:  *opts.ExpiresAt,
 			Valid: true,
 		}
 	} else {
@@ -168,20 +170,24 @@ func (r *SqlcPasteRepository) Update(ctx context.Context, userId int64, paste *p
 		}
 	}
 
-	err := r.q.UpdatePaste(ctx, dbgen.UpdatePasteParams{
-		Uuid:       paste.Uuid,
-		Title:      paste.Title,
-		Syntax:     string(paste.Syntax),
-		Visibility: string(paste.Visibility),
-		MaxViews:   paste.MaxViews,
+	update, err := r.q.UpdatePaste(ctx, dbgen.UpdatePasteParams{
+		Uuid:       opts.Uuid,
+		UserID:     userId,
+		Title:      opts.Title,
+		Syntax:     string(opts.Syntax),
+		Visibility: string(opts.Visibility),
+		MaxViews:   opts.MaxViews,
 		ExpireAt:   expire,
 	})
 
 	if err != nil {
-		return err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, paste.ErrNotFound
+		}
+		return nil, err
 	}
 
-	return nil
+	return mapPasteFromDB(update), nil
 }
 
 func (r *SqlcPasteRepository) Delete(ctx context.Context, userId int64, pasteUuid uuid.UUID) error {

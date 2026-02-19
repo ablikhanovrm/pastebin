@@ -31,7 +31,7 @@ func (r *SqlcAuthRepository) CreateRefreshToken(ctx context.Context, token auth.
 	params := dbgen.CreateRefreshTokenParams{
 		UserID:    token.UserID,
 		TokenHash: token.TokenHash,
-		UserAgent: toPgText(token.UserAgent),
+		UserAgent: token.UserAgent,
 		IpAddress: toNetIp(token.IPAddress),
 		ExpiresAt: pgtype.Timestamptz{ // TTL
 			Time:  token.ExpiresAt,

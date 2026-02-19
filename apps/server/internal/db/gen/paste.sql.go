@@ -293,20 +293,22 @@ func (q *Queries) GetUserPastesFirstPage(ctx context.Context, arg GetUserPastesF
 	return items, nil
 }
 
-const updatePaste = `-- name: UpdatePaste :exec
+const updatePaste = `-- name: UpdatePaste :one
 UPDATE pastes
 SET
-    title = $2,
-    syntax = $3,
-    visibility = $4,
-    max_views = $5,
-    expire_at = $6,
+    title = $3,
+    syntax = $4,
+    visibility = $5,
+    max_views = $6,
+    expire_at = $7,
     updated_at = now()
-WHERE uuid = $1
+WHERE uuid = $1 AND user_id = $2
+RETURNING id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at
 `
 
 type UpdatePasteParams struct {
 	Uuid       uuid.UUID
+	UserID     int64
 	Title      string
 	Syntax     string
 	Visibility string
@@ -314,14 +316,31 @@ type UpdatePasteParams struct {
 	ExpireAt   pgtype.Timestamptz
 }
 
-func (q *Queries) UpdatePaste(ctx context.Context, arg UpdatePasteParams) error {
-	_, err := q.db.Exec(ctx, updatePaste,
+func (q *Queries) UpdatePaste(ctx context.Context, arg UpdatePasteParams) (Paste, error) {
+	row := q.db.QueryRow(ctx, updatePaste,
 		arg.Uuid,
+		arg.UserID,
 		arg.Title,
 		arg.Syntax,
 		arg.Visibility,
 		arg.MaxViews,
 		arg.ExpireAt,
 	)
-	return err
+	var i Paste
+	err := row.Scan(
+		&i.ID,
+		&i.Uuid,
+		&i.UserID,
+		&i.Title,
+		&i.S3Key,
+		&i.ViewsCount,
+		&i.MaxViews,
+		&i.Status,
+		&i.Syntax,
+		&i.Visibility,
+		&i.ExpireAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
