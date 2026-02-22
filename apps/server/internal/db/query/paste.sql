@@ -3,6 +3,10 @@ SELECT * FROM pastes as p
 WHERE p.uuid = $1 AND p.user_id = $2
 LIMIT 1;
 
+-- name: GetManyByIds :many
+SELECT * FROM pastes as p
+WHERE p.uuid = ANY(sqlc.arg(ids)::uuid[]) AND p.user_id = sqlc.arg(userId);
+
 -- name: GetPastesFirstPage :many
 SELECT * FROM pastes as p
 WHERE p.visibility='public'

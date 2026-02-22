@@ -15,6 +15,8 @@ type RedisCacheInterface interface {
 
 	GetPasteList(ctx context.Context, key string) ([]string, error)
 	SetPasteList(ctx context.Context, key string, ids []string) error
+	MgetPasteList(ctx context.Context, ids []string) (map[string]*paste.Paste, []string, error)
+	MsetPasteList(ctx context.Context, ids []*paste.Paste) error
 }
 
 type RedisCache struct {

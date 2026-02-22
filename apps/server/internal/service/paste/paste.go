@@ -178,66 +178,57 @@ func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64
 func (s *Service) GetPastes(ctx context.Context, userId int64, cursor *time.Time, limit int32) ([]*paste.Paste, *time.Time, error) {
 	repo := s.repo(s.db)
 
-	var pastes []*paste.Paste
-	var err error
+	return s.getFromCacheThenDB(
+		ctx,
+		cursor,
+		limit,
+		func() ([]*paste.Paste, error) {
+			if cursor == nil {
+				return repo.GetPastesFirstPage(ctx, pasterepo.GetPastesFirstPageParams{
+					UserId: userId,
+					Limit:  limit,
+				})
+			} else {
+				return repo.GetPastesAfterCursor(ctx, pasterepo.GetPastesAfterCursorParams{
+					UserId: userId,
+					Cursor: *cursor,
+					Limit:  limit,
+				})
+			}
 
-	if cursor == nil {
-		pastes, err = repo.GetPastesFirstPage(ctx, pasterepo.GetPastesFirstPageParams{
-			UserId: userId,
-			Limit:  limit,
-		})
-	} else {
-		pastes, err = repo.GetPastesAfterCursor(ctx, pasterepo.GetPastesAfterCursorParams{
-			Cursor: *cursor,
-			Limit:  limit,
-			UserId: userId,
-		})
-	}
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if len(pastes) == 0 {
-		return pastes, nil, nil
-	}
-
-	next := pastes[len(pastes)-1].CreatedAt
-
-	return pastes, &next, nil
-
+		},
+		func(ids []uuid.UUID) ([]*paste.Paste, error) {
+			return repo.GetManyByIDs(ctx, userId, ids)
+		},
+	)
 }
 
 func (s *Service) GetMyPastes(ctx context.Context, userId int64, cursor *time.Time, limit int32) ([]*paste.Paste, *time.Time, error) {
 	repo := s.repo(s.db)
 
-	var pastes []*paste.Paste
-	var err error
+	return s.getFromCacheThenDB(
+		ctx,
+		cursor,
+		limit,
+		func() ([]*paste.Paste, error) {
+			if cursor == nil {
+				return repo.GetPastesFirstPage(ctx, pasterepo.GetPastesFirstPageParams{
+					UserId: userId,
+					Limit:  limit,
+				})
+			} else {
+				return repo.GetPastesAfterCursor(ctx, pasterepo.GetPastesAfterCursorParams{
+					Cursor: *cursor,
+					Limit:  limit,
+					UserId: userId,
+				})
+			}
 
-	if cursor == nil {
-		pastes, err = repo.GetPastesFirstPage(ctx, pasterepo.GetPastesFirstPageParams{
-			UserId: userId,
-			Limit:  limit,
-		})
-	} else {
-		pastes, err = repo.GetPastesAfterCursor(ctx, pasterepo.GetPastesAfterCursorParams{
-			Cursor: *cursor,
-			Limit:  limit,
-			UserId: userId,
-		})
-	}
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if len(pastes) == 0 {
-		return pastes, nil, nil
-	}
-
-	next := pastes[len(pastes)-1].CreatedAt
-
-	return pastes, &next, nil
+		},
+		func(ids []uuid.UUID) ([]*paste.Paste, error) {
+			return repo.GetManyByIDs(ctx, userId, ids)
+		},
+	)
 }
 
 func (s *Service) Delete(ctx context.Context, pasteUuid string, userId int64) error {
@@ -300,3 +291,103 @@ func (s *Service) Update(ctx context.Context, pasteUuid string, userId int64, in
 
 	return nil
 } // cache done
+
+// helpers
+func (s *Service) getFromCacheThenDB(
+	ctx context.Context,
+	cursor *time.Time,
+	limit int32,
+	fetchPage func() ([]*paste.Paste, error), // загрузка страницы из БД (если полный miss)
+	fetchByIDs func([]uuid.UUID) ([]*paste.Paste, error), // загрузка конкретных paste по id
+) ([]*paste.Paste, *time.Time, error) {
+
+	var pastes []*paste.Paste
+
+	// LIST CACHE
+	pasteIDs, err := s.cache.GetPasteList(ctx, limit, cursor)
+	if err != nil {
+		s.log.Warn().Err(err).Msg("cache get list failed")
+	}
+
+	if len(pasteIDs) > 0 {
+		founded, missIDs, err := s.cache.MgetPasteList(ctx, pasteIDs)
+		if err != nil {
+			s.log.Warn().Err(err).Msg("cache mget failed")
+		}
+
+		// MISS → DB
+		var missPastes []*paste.Paste
+		if len(missIDs) > 0 {
+			parsed, err := parsePasteUuids(missIDs)
+			if err == nil && len(parsed) > 0 {
+
+				missPastes, err = fetchByIDs(parsed)
+				if err != nil {
+					s.log.Warn().Err(err).Msg("db load miss failed")
+				}
+
+				// прогрев кеша
+				if len(missPastes) > 0 {
+					go func(pastes []*paste.Paste) {
+						if err := s.cache.MsetPasteList(ctx, pastes); err != nil {
+							s.log.Warn().Err(err).Msg("cache set miss pastes failed")
+						}
+					}(missPastes)
+				}
+			}
+		}
+
+		// восстановление порядка
+		resultMap := make(map[string]*paste.Paste, len(founded)+len(missPastes))
+
+		for _, p := range founded {
+			resultMap[p.Uuid.String()] = p
+		}
+		for _, p := range missPastes {
+			resultMap[p.Uuid.String()] = p
+		}
+
+		for _, id := range pasteIDs {
+			if p, ok := resultMap[id]; ok {
+				pastes = append(pastes, p)
+			}
+		}
+
+		if len(pastes) > 0 {
+			next := pastes[len(pastes)-1].CreatedAt
+			return pastes, &next, nil
+		}
+
+		s.log.Warn().Msg("cache list exists but empty result, fallback db")
+	}
+
+	// FULL DB FALLBACK
+	pastes, err = fetchPage()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(pastes) == 0 {
+		return pastes, nil, nil
+	}
+
+	// прогрев кеша
+	go func(pastes []*paste.Paste, cur *time.Time, l int32) {
+		if err := s.cache.MsetPasteList(ctx, pastes); err != nil {
+			s.log.Warn().Err(err).Msg("cache set pastes failed")
+		}
+
+		ids := make([]string, 0, len(pastes))
+		for _, p := range pastes {
+			ids = append(ids, p.Uuid.String())
+		}
+
+		if err := s.cache.SetPasteList(ctx, ids, cur, l); err != nil {
+			s.log.Warn().Err(err).Msg("cache set list failed")
+		}
+
+	}(pastes, cursor, limit)
+
+	next := pastes[len(pastes)-1].CreatedAt
+	return pastes, &next, nil
+}
