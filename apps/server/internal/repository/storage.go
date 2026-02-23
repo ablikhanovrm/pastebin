@@ -15,7 +15,7 @@ type PostgresStorage struct {
 }
 
 func NewPostgresStorage(cfg *config.DatabaseConfig) (*PostgresStorage, error) {
-	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DbName)
+	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DbName, cfg.SslMode)
 	ctx := context.Background()
 
 	pool, err := pgxpool.New(ctx, dbUrl)

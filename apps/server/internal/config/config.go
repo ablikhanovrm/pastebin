@@ -27,7 +27,7 @@ type HttpServer struct {
 
 type DatabaseConfig struct {
 	Host     string `yaml:"host" env-default:"localhost" env:"DB_HOST"`
-	Port     string `yaml:"port" env-default:"3306" env:"DB_PORT"`
+	Port     string `yaml:"port" env-default:"5432" env:"DB_PORT"`
 	Username string `yaml:"username" env-default:"default" env:"DB_USER_NAME"`
 	Password string `yaml:"password" env-default:"Qwerty12345" env:"DB_PASSWORD"`
 	DbName   string `yaml:"dbname" env-default:"pastebin" env:"DB_NAME"`

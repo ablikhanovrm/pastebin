@@ -11,7 +11,7 @@ func InitPasteRoutes(rg *gin.RouterGroup, h *handler.Handler) {
 		paste.GET("", h.GetPastes)
 		paste.GET("/my", h.GetMyPastes)
 		paste.GET("/:id", h.GetPaste)
-		paste.POST("/", h.CreatePaste)
+		paste.POST("", h.CreatePaste)
 		paste.PUT("/:id", h.UpdatePaste)
 		paste.DELETE("/:id", h.DeletePaste)
 	}

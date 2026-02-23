@@ -14,14 +14,14 @@ import (
 
 type PasteRepository interface {
 	Create(ctx context.Context, userId int64, u *paste.Paste) (*paste.Paste, error)
-	GetByID(ctx context.Context, userId int64, id uuid.UUID) (*paste.Paste, error)
+	GetByID(ctx context.Context, userId int64, pasteUuid uuid.UUID) (*paste.Paste, error)
 	GetManyByIDs(ctx context.Context, userId int64, ids []uuid.UUID) ([]*paste.Paste, error)
 	GetPastesFirstPage(ctx context.Context, params GetPastesFirstPageParams) ([]*paste.Paste, error)
 	GetPastesAfterCursor(ctx context.Context, params GetPastesAfterCursorParams) ([]*paste.Paste, error)
 	GetMyPastesFirstPage(ctx context.Context, params GetMyPastesFirstPageParams) ([]*paste.Paste, error)
 	GetMyPastesAfterCursor(ctx context.Context, params GetMyPastesAfterCursorParams) ([]*paste.Paste, error)
-	Update(ctx context.Context, userId int64, paste *paste.Paste) error
-	Delete(ctx context.Context, userId int64, id uuid.UUID) error
+	Update(ctx context.Context, userId int64, opts *paste.Paste) (*paste.Paste, error)
+	Delete(ctx context.Context, userId int64, pasteUuid uuid.UUID) error
 }
 
 type SqlcPasteRepository struct {

@@ -5,7 +5,7 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/db"
 )
 
-const configPath = "../../configs/main.yaml"
+const configPath = "configs/main.yaml"
 
 func main() {
 	cfg := config.GetConfig(configPath)

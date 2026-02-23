@@ -11,7 +11,7 @@ http_server:
   secure_cookies: false
 db: 
   host: "localhost"
-  port: "3306"
+  port: "5432"
   username: "default"
   password: "Qwerty12345"
   dbname: "pastebin"
@@ -24,6 +24,6 @@ s3:
 #  use_ssl: false
   region: "us-east-1"
 redis:
-  host: "redis"
+  host: "127.0.0.1"
   port: "6379"
   password: "Qwerty12345"
