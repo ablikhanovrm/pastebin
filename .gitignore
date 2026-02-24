@@ -1,1 +1,46 @@
-node_modules
+# ========================
+# Binaries
+# ========================
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+/app
+/migrate
+/bin
+
+# ========================
+# Go workspace
+# ========================
+go.work
+go.work.sum
+
+# ========================
+# IDE
+# ========================
+.idea/
+.vscode/
+
+# ========================
+# OS
+# ========================
+.DS_Store
+
+# ========================
+# Logs
+# ========================
+*.log
+
+# ========================
+# Docker local overrides
+# ========================
+docker-compose.override.yml
+
+# vendor/   # uncomment if needed
