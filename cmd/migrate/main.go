@@ -5,9 +5,7 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/db"
 )
 
-const configPath = "configs/main.yaml"
-
 func main() {
-	cfg := config.GetConfig(configPath)
+	cfg := config.GetConfig()
 	db.RunMigrate(&cfg.DB)
 }

@@ -1,0 +1,13 @@
+services:
+  migrate:
+    image: ghcr.io/ablikhanovrm/pastebin:latest
+    command: ["./migrate", "up"]
+    env_file:
+      - .env.prod
+
+  app:
+    image: ghcr.io/ablikhanovrm/pastebin:latest
+    command: ["./app"]
+    env_file:
+      - .env.prod
+    restart: always

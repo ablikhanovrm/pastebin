@@ -5,54 +5,57 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	AppEnv string         `yaml:"env" env-default:"local" env:"APP_ENV"`
-	Server HttpServer     `yaml:"http_server"`
-	DB     DatabaseConfig `yaml:"db"`
-	S3     S3Config       `yaml:"s3"`
-	Redis  RedisConfig    `yaml:"redis"`
+	AppEnv string `env:"APP_ENV" required:"true"`
+	Server HttpServer
+	DB     DatabaseConfig
+	S3     S3Config
+	Redis  RedisConfig
 }
 
 type HttpServer struct {
-	Host          string        `yaml:"host" env-default:"localhost" env:"API_HOST"`
-	Port          string        `yaml:"port" env-default:"8000" env:"API_PORT"`
-	ReadTimeout   time.Duration `yaml:"read_timeout" env-default:"10s" env:"HTTP_READ_TIMEOUT" `
-	WriteTimeout  time.Duration `yaml:"write_timeout" env-default:"10s" env:"HTTP_WRITE_TIMEOUT"`
-	IdleTimeout   time.Duration `yaml:"idle_timeout" env-default:"60s" env:"HTTP_IDLE_TIMEOUT"`
-	JwtSecret     string        `yaml:"jwt_secret" env-default:"super_secret_key" env:"JWT_SECRET"`
-	SecureCookies bool          `yaml:"secure_cookies" env-default:"false" env:"SECURE_COOKIES"`
+	Host          string        `env:"API_HOST" required:"true"`
+	Port          string        `env:"API_PORT" required:"true"`
+	ReadTimeout   time.Duration `env-default:"10s" env:"HTTP_READ_TIMEOUT" `
+	WriteTimeout  time.Duration `env-default:"10s" env:"HTTP_WRITE_TIMEOUT"`
+	IdleTimeout   time.Duration `env-default:"60s" env:"HTTP_IDLE_TIMEOUT"`
+	JwtSecret     string        `env:"JWT_SECRET" required:"true"`
+	SecureCookies bool          `env:"SECURE_COOKIES" required:"true"`
 }
 
 type DatabaseConfig struct {
-	Host     string `yaml:"host" env-default:"localhost" env:"DB_HOST"`
-	Port     string `yaml:"port" env-default:"5432" env:"DB_PORT"`
-	Username string `yaml:"username" env-default:"default" env:"DB_USER_NAME"`
-	Password string `yaml:"password" env-default:"Qwerty12345" env:"DB_PASSWORD"`
-	DbName   string `yaml:"dbname" env-default:"pastebin" env:"DB_NAME"`
-	SslMode  string `yaml:"sslmode" env-default:"disable" env:"SSL_MODE"`
+	Host     string `env-default:"localhost" env:"DB_HOST" required:"true"`
+	Port     string `env-default:"5432" env:"DB_PORT" required:"true"`
+	Username string `env-default:"default" env:"DB_USER" required:"true"`
+	Password string `env-default:"default" env:"DB_PASSWORD" required:"true"`
+	DbName   string `env-default:"pastebin" env:"DB_NAME" required:"true"`
+	SslMode  string `env-default:"disable" env:"DB_SSLMODE" required:"true"`
 }
 
 type S3Config struct {
-	Endpoint  string `yaml:"endpoint" env-default:"https://pupuha-dev.object.pscloud.io" env:"S3_ENDPOINT"`
-	Region    string `yaml:"region" env-default:"us-east-1" env:"S3_REGION"`
-	Bucket    string `yaml:"bucket" env-default:"pupuha-dev" env:"S3_BUCKET"`
-	AccessKey string `yaml:"access_key" env-default:"V9M58P398E715KZHYNPS" env:"S3_ACCESS_KEY"`
-	SecretKey string `yaml:"secret_key" env-default:"IO24QaIQ1i0xROcnKF2fwO77CyI7E0TXmFs88ffq" env:"S3_SECRET_KEY"`
+	Endpoint  string `env:"S3_ENDPOINT" required:"true"`
+	Region    string `env:"S3_REGION" required:"true"`
+	Bucket    string `env:"S3_BUCKET" required:"true"`
+	AccessKey string `env:"S3_ACCESS_KEY" required:"true"`
+	SecretKey string `env:"S3_SECRET_KEY" required:"true"`
 }
 
 type RedisConfig struct {
-	Host     string `yaml:"host" env-default:"localhost" env:"REDIS_HOST"`
-	Port     string `yaml:"port" env-default:"6379" env:"REDIS_PORT"`
-	Password string `yaml:"password" env-default:"Qwerty12345" env:"REDIS_PASSWORD"`
+	Host     string `env:"REDIS_HOST" required:"true"`
+	Port     string `env:"REDIS_PORT" required:"true"`
+	Password string `env:"REDIS_PASSWORD" required:"true"`
 }
 
-func GetConfig(configPath string) *Config {
+func GetConfig() *Config {
 	var cfg Config
 
-	err := cleanenv.ReadConfig(configPath, &cfg)
-	if err != nil {
+	// грузим .env
+	_ = godotenv.Load()
+
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
 		log.Fatalf("failed to init config: %v", err.Error())
 	}
 

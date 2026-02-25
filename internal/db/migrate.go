@@ -15,6 +15,7 @@ import (
 )
 
 func RunMigrate(cfg *config.DatabaseConfig) {
+	fmt.Println("RUN MIGRATE", cfg)
 	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DbName, cfg.SslMode)
 
 	db, err := sql.Open("postgres", dbUrl)

@@ -17,8 +17,8 @@ import (
 	"github.com/ablikhanovrm/pastebin/pkg/jwt"
 )
 
-func Run(configPath string) {
-	newConfig := config.GetConfig(configPath)
+func Run() {
+	newConfig := config.GetConfig()
 
 	logger := logging.New("pastebin")
 
