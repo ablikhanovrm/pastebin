@@ -23,16 +23,18 @@ type HttpServer struct {
 	WriteTimeout  time.Duration `env-default:"10s" env:"HTTP_WRITE_TIMEOUT"`
 	IdleTimeout   time.Duration `env-default:"60s" env:"HTTP_IDLE_TIMEOUT"`
 	JwtSecret     string        `env:"JWT_SECRET" required:"true"`
-	SecureCookies bool          `env:"SECURE_COOKIES" required:"true"`
+	SecureCookies bool          `env-default:"enable" env:"SECURE_COOKIES" required:"true"`
 }
 
 type DatabaseConfig struct {
-	Host     string `env-default:"localhost" env:"DB_HOST" required:"true"`
-	Port     string `env-default:"5432" env:"DB_PORT" required:"true"`
-	Username string `env-default:"default" env:"DB_USER" required:"true"`
-	Password string `env-default:"default" env:"DB_PASSWORD" required:"true"`
-	DbName   string `env-default:"pastebin" env:"DB_NAME" required:"true"`
-	SslMode  string `env-default:"disable" env:"DB_SSLMODE" required:"true"`
+	Host             string `env-default:"localhost" env:"DB_HOST" required:"true"`
+	Port             string `env-default:"5432" env:"DB_PORT" required:"true"`
+	Username         string `env-default:"default" env:"DB_USER" required:"true"`
+	Password         string `env-default:"default" env:"DB_PASSWORD" required:"true"`
+	MigratorUser     string `env-default:"default" env:"DB_MIGRATOR_USER" required:"true"`
+	MigratorPassword string `env-default:"default" env:"DB_MIGRATOR_PASSWORD" required:"true"`
+	DbName           string `env-default:"pastebin" env:"DB_NAME" required:"true"`
+	SslMode          string `env-default:"enable" env:"DB_SSLMODE" required:"true"`
 }
 
 type S3Config struct {
