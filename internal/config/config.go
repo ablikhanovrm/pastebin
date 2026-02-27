@@ -17,8 +17,8 @@ type Config struct {
 }
 
 type HttpServer struct {
-	Host          string        `env:"API_HOST" required:"true"`
-	Port          string        `env:"API_PORT" required:"true"`
+	Host          string        `env:"HTTP_BIND_ADDRESS" required:"true"`
+	Port          string        `env:"HTTP_PORT" required:"true"`
 	ReadTimeout   time.Duration `env-default:"10s" env:"HTTP_READ_TIMEOUT" `
 	WriteTimeout  time.Duration `env-default:"10s" env:"HTTP_WRITE_TIMEOUT"`
 	IdleTimeout   time.Duration `env-default:"60s" env:"HTTP_IDLE_TIMEOUT"`
