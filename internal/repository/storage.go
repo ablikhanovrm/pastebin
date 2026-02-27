@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/ablikhanovrm/pastebin/internal/config"
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
@@ -15,10 +16,21 @@ type PostgresStorage struct {
 }
 
 func NewPostgresStorage(cfg *config.DatabaseConfig) (*PostgresStorage, error) {
-	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DbName, cfg.SslMode)
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(cfg.Username, cfg.Password),
+		Host:   fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
+		Path:   cfg.DbName,
+	}
+
+	q := u.Query()
+	q.Set("sslmode", cfg.SslMode)
+	u.RawQuery = q.Encode()
+
+	dsn := u.String()
 	ctx := context.Background()
 
-	pool, err := pgxpool.New(ctx, dbUrl)
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}

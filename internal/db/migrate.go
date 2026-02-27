@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -16,9 +17,19 @@ import (
 
 func RunMigrate(cfg *config.DatabaseConfig) {
 	fmt.Println("RUN MIGRATE", cfg)
-	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DbName, cfg.SslMode)
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(cfg.Username, cfg.Password),
+		Host:   fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
+		Path:   cfg.DbName,
+	}
 
-	db, err := sql.Open("postgres", dbUrl)
+	q := u.Query()
+	q.Set("sslmode", cfg.SslMode)
+	u.RawQuery = q.Encode()
+
+	dsn := u.String()
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
 	}
