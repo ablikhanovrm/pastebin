@@ -1,0 +1,57 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout // load repo into runner
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR // authenticate to ghcr.io and pull the image
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build image
+        run: docker build -t ghcr.io/${{ github.repository_owner }}/pastebin:latest .
+
+      - name: Push image
+        run: docker push ghcr.io/${{ github.repository_owner }}/pastebin:latest
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/pastebin
+            
+            export APP_ENV=${{ secrets.APP_ENV }}
+            export JWT_SECRET=${{ secrets.JWT_SECRET }}
+            export SECURE_COOKIES=${{ secrets.SECURE_COOKIES }}
+            
+            export DB_NAME=${{ secrets.DB_NAME }}
+            export DB_HOST=${{ secrets.DB_HOST }}
+            export DB_PORT=${{ secrets.DB_PORT }}
+            export DB_USER=${{ secrets.DB_USER }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export DB_MIGRATOR_PASSWORD=${{ secrets.DB_MIGRATOR_PASSWORD }}
+            export DB_MIGRATOR_USER=${{ secrets.DB_MIGRATOR_USER }}
+            export DB_SSLMODE=${{ secrets.DB_SSLMODE }}
+            
+            export REDIS_HOST=${{ secrets.REDIS_HOST }}
+            export REDIS_PORT=${{ secrets.REDIS_PORT }}
+            export REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+
+            export S3_ENDPOINT=${{ secrets.S3_ENDPOINT }}
+            export S3_ACCESS_KEY=${{ secrets.S3_ACCESS_KEY }}
+            export S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}
+            export S3_BUCKET=${{ secrets.S3_BUCKET }}
+
+            docker compose pull
+            docker compose up -d --remove-orphans
