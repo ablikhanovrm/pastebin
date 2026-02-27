@@ -57,5 +57,5 @@ jobs:
             export S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}
             export S3_BUCKET=${{ secrets.S3_BUCKET }}
 
-            docker compose pull
-            docker compose up -d --remove-orphans
+            docker-compose pull
+            docker-compose up -d --remove-orphans
