@@ -23,7 +23,7 @@ type HttpServer struct {
 	WriteTimeout  time.Duration `env-default:"10s" env:"HTTP_WRITE_TIMEOUT"`
 	IdleTimeout   time.Duration `env-default:"60s" env:"HTTP_IDLE_TIMEOUT"`
 	JwtSecret     string        `env:"JWT_SECRET" required:"true"`
-	SecureCookies bool          `env-default:"enable" env:"SECURE_COOKIES" required:"true"`
+	SecureCookies bool          `env-default:"false" env:"SECURE_COOKIES" required:"true"`
 }
 
 type DatabaseConfig struct {

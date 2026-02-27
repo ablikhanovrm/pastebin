@@ -57,7 +57,8 @@ jobs:
             export S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}
             export S3_BUCKET=${{ secrets.S3_BUCKET }}
 
+            docker-compose -f docker-compose.prod.yml down
             docker-compose -f docker-compose.prod.yml pull
-            docker-compose -f docker-compose.prod.yml up -d --remove-orphans --force-recreate
+            docker-compose -f docker-compose.prod.yml up -d --remove-orphans
             
             docker image prune -af
