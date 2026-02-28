@@ -9,6 +9,7 @@ import (
 
 func InitRoutes(h *handler.Handler, jwtManager *jwt.Manager) *gin.Engine {
 	router := gin.New()
+	router.Use(gin.Recovery())
 	router.Use(middleware.ClientInfoMiddleware())
 	api := router.Group("/api")
 
