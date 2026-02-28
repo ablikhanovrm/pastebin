@@ -7,12 +7,13 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"path/filepath"
 
 	"github.com/ablikhanovrm/pastebin/internal/config"
+	"github.com/ablikhanovrm/pastebin/internal/migrations"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
 func RunMigrate(cfg *config.DatabaseConfig) {
@@ -39,9 +40,14 @@ func RunMigrate(cfg *config.DatabaseConfig) {
 		log.Fatal(err)
 	}
 
-	abs, _ := filepath.Abs("./migrations")
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://"+abs,
+	d, err := iofs.New(migrations.FS, "migrations")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	m, err := migrate.NewWithInstance(
+		"iofs",
+		d,
 		"postgres",
 		driver,
 	)
