@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -54,8 +55,9 @@ type RedisConfig struct {
 func GetConfig() *Config {
 	var cfg Config
 
-	// грузим .env
-	_ = godotenv.Load()
+	if os.Getenv("APP_ENV") != "prod" {
+		_ = godotenv.Load()
+	}
 
 	if err := cleanenv.ReadEnv(&cfg); err != nil {
 		log.Fatalf("failed to init config: %v", err.Error())

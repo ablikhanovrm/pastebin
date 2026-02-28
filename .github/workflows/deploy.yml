@@ -38,6 +38,8 @@ jobs:
             docker-compose -f docker-compose.prod.yml down
             docker-compose -f docker-compose.prod.yml pull
             
+            HTTP_BIND_ADDRESS=0.0.0.0 \
+            HTTP_PORT=8080 \
             APP_ENV=${{ secrets.APP_ENV }} \
             JWT_SECRET=${{ secrets.JWT_SECRET }} \
             SECURE_COOKIES=${{ secrets.SECURE_COOKIES }} \

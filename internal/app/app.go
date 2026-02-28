@@ -1,6 +1,10 @@
 package app
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/ablikhanovrm/pastebin/internal/config"
 	"github.com/ablikhanovrm/pastebin/internal/logging"
 	"github.com/ablikhanovrm/pastebin/internal/repository"
@@ -41,21 +45,21 @@ func Run() {
 
 	srv := new(Server)
 
-	//go func() {
-	if err := srv.NewServer(newConfig, router); err != nil {
-		logger.Fatal().Err(err).Msg("Failed to run server")
-	}
-	//}()
+	go func() {
+		if err := srv.NewServer(newConfig, router); err != nil {
+			logger.Fatal().Err(err).Msg("Failed to run server")
+		}
+	}()
 
-	//quit := make(chan os.Signal, 1)
-	//signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-	//<-quit
-	//
-	//logger.Warn().Msg("Pastebin app Shutting down")
-	//
-	//if err := srv.Shutdown(context.Background()); err != nil {
-	//	logger.Error().Err(err).Msg("Error occurred on server shutting down")
-	//}
-	//
-	//db.Pool.Close()
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	<-quit
+
+	logger.Warn().Msg("Pastebin app Shutting down")
+
+	if err := srv.Shutdown(context.Background()); err != nil {
+		logger.Error().Err(err).Msg("Error occurred on server shutting down")
+	}
+
+	db.Pool.Close()
 }
