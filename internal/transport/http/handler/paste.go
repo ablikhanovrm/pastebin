@@ -12,7 +12,6 @@ import (
 )
 
 func (h *Handler) GetPastes(c *gin.Context) {
-	panic("TEST PANIC")
 	limit := int32(20)
 	if l := c.Query("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil {
