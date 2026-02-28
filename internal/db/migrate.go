@@ -40,7 +40,7 @@ func RunMigrate(cfg *config.DatabaseConfig) {
 		log.Fatal(err)
 	}
 
-	d, err := iofs.New(migrations.FS, "migrations")
+	d, err := iofs.New(migrations.FS, ".")
 	if err != nil {
 		log.Fatal(err)
 	}
