@@ -17,7 +17,6 @@ import (
 )
 
 func RunMigrate(cfg *config.DatabaseConfig) {
-	fmt.Println("RUN MIGRATE", cfg)
 	u := &url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword(cfg.Username, cfg.Password),
@@ -51,7 +50,6 @@ func RunMigrate(cfg *config.DatabaseConfig) {
 		"postgres",
 		driver,
 	)
-	fmt.Println("MIGRATE")
 	if err != nil {
 		log.Fatal(err)
 	}
