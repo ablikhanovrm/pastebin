@@ -50,6 +50,7 @@ func RunMigrate(cfg *config.DatabaseConfig) {
 		"postgres",
 		driver,
 	)
+	fmt.Println("MIGRATE")
 	if err != nil {
 		log.Fatal(err)
 	}
