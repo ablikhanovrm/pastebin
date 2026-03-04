@@ -10,7 +10,7 @@ services:
       DB_NAME: ${DB_NAME}
       DB_MIGRATOR_USER: ${DB_MIGRATOR_USER}
       DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD}
-
+      DB_SSLMODE: ${DB_SSLMODE}
   app:
     image: ghcr.io/ablikhanovrm/pastebin:latest
     command: ["./app"]
