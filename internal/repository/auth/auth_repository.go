@@ -6,7 +6,6 @@ import (
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
 	"github.com/ablikhanovrm/pastebin/internal/models/auth"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/rs/zerolog"
 )
 
 type AuthRepository interface {
@@ -16,14 +15,12 @@ type AuthRepository interface {
 }
 
 type SqlcAuthRepository struct {
-	q   *dbgen.Queries
-	log zerolog.Logger
+	q *dbgen.Queries
 }
 
-func NewSqlcAuthRepository(db dbgen.DBTX, log zerolog.Logger) *SqlcAuthRepository {
+func NewSqlcAuthRepository(db dbgen.DBTX) *SqlcAuthRepository {
 	return &SqlcAuthRepository{
-		q:   dbgen.New(db),
-		log: log,
+		q: dbgen.New(db),
 	}
 }
 

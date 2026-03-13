@@ -32,7 +32,6 @@ type Service struct {
 	tokens *jwt.Manager
 	db     *pgxpool.Pool
 	cache  *cache.RedisCache
-	log    zerolog.Logger
 }
 
 func NewAuthService(
@@ -40,20 +39,18 @@ func NewAuthService(
 	tokens *jwt.Manager,
 	db *pgxpool.Pool,
 	cache *cache.RedisCache,
-	log zerolog.Logger,
 ) *Service {
 	return &Service{
 		users:  users,
 		tokens: tokens,
 		db:     db,
-		log:    log,
 		cache:  cache,
 	}
 }
 
 // repo helper
 func (s *Service) repo(db dbgen.DBTX) *authrepo.SqlcAuthRepository {
-	return authrepo.NewSqlcAuthRepository(db, s.log)
+	return authrepo.NewSqlcAuthRepository(db)
 }
 
 func (s *Service) Login(ctx context.Context, params LoginInput) (*Tokens, error) {
@@ -105,6 +102,8 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (s *Service) Refresh(ctx context.Context, refreshToken string, ip string, ua string) (*Tokens, error) {
+	log := zerolog.Ctx(ctx)
+
 	hashRt := hash.HashRefreshToken(refreshToken)
 	rt, err := s.repo(s.db).GetRefreshTokenByHash(ctx, hashRt)
 	if err != nil {
@@ -164,7 +163,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, ip string, u
 
 	token, err := s.tokens.Generate(foundUser.Id, time.Minute*15)
 	if err != nil {
-		s.log.Warn().Err(err).
+		log.Warn().Err(err).
 			Int64("user_id", foundUser.Id).
 			Msg("failed to generate access token")
 
@@ -175,6 +174,8 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, ip string, u
 }
 
 func (s *Service) Register(ctx context.Context, input RegisterInput) (*Tokens, error) {
+	log := zerolog.Ctx(ctx)
+
 	hashPass, err := security.HashPassword(input.Password)
 	if err != nil {
 		return nil, err
@@ -195,7 +196,7 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (*Tokens, e
 
 	access, err := s.tokens.Generate(userId, 15*time.Minute)
 	if err != nil {
-		s.log.Warn().Err(err).Msg("failed generate access")
+		log.Warn().Err(err).Msg("failed generate access")
 	}
 
 	refresh, err := random.GenerateRefreshToken(32)

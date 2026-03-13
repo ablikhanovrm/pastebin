@@ -9,7 +9,6 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/service/user"
 	"github.com/ablikhanovrm/pastebin/pkg/jwt"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/zerolog"
 )
 
 type Services struct {
@@ -24,15 +23,10 @@ func NewServices(
 	db *pgxpool.Pool,
 	s3Storage *storage.Service,
 	cache *cache.RedisCache,
-	logger zerolog.Logger,
 ) *Services {
-	authLogger := logger.With().Str("service", "auth").Logger()
-	userLogger := logger.With().Str("service", "user").Logger()
-	pasteLogger := logger.With().Str("service", "paste").Logger()
-
 	return &Services{
-		Auth:  auth.NewAuthService(repo.User, jwtManager, db, cache, authLogger),
-		User:  user.NewUserService(db, cache, userLogger),
-		Paste: paste.NewPasteService(db, s3Storage, cache, pasteLogger),
+		Auth:  auth.NewAuthService(repo.User, jwtManager, db, cache),
+		User:  user.NewUserService(db, cache),
+		Paste: paste.NewPasteService(db, s3Storage, cache),
 	}
 }

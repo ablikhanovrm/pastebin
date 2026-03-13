@@ -8,7 +8,6 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/repository/cache"
 	userrepo "github.com/ablikhanovrm/pastebin/internal/repository/user"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/zerolog"
 )
 
 type UserService interface {
@@ -19,13 +18,12 @@ type UserService interface {
 type Service struct {
 	db    *pgxpool.Pool
 	cache *cache.RedisCache
-	log   zerolog.Logger
 }
 
-func NewUserService(db *pgxpool.Pool, cache *cache.RedisCache, log zerolog.Logger) *Service {
-	return &Service{db: db, cache: cache, log: log}
+func NewUserService(db *pgxpool.Pool, cache *cache.RedisCache) *Service {
+	return &Service{db: db, cache: cache}
 }
 
 func (s *Service) repo(db dbgen.DBTX) *userrepo.SqlcUserRepository {
-	return userrepo.NewSqlcUserRepository(db, s.log)
+	return userrepo.NewSqlcUserRepository(db)
 }

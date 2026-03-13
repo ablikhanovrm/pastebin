@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/rs/zerolog"
 )
 
 type PasteRepository interface {
@@ -25,12 +24,11 @@ type PasteRepository interface {
 }
 
 type SqlcPasteRepository struct {
-	q   *dbgen.Queries
-	log zerolog.Logger
+	q *dbgen.Queries
 }
 
-func NewSqlcPasteRepository(db dbgen.DBTX, log zerolog.Logger) *SqlcPasteRepository {
-	return &SqlcPasteRepository{q: dbgen.New(db), log: log}
+func NewSqlcPasteRepository(db dbgen.DBTX) *SqlcPasteRepository {
+	return &SqlcPasteRepository{q: dbgen.New(db)}
 }
 
 func (r *SqlcPasteRepository) Create(ctx context.Context, userId int64, u *paste.Paste) (*paste.Paste, error) {

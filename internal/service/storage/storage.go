@@ -7,7 +7,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/rs/zerolog"
 )
 
 type ObjectStorage interface {
@@ -18,11 +17,10 @@ type ObjectStorage interface {
 type Service struct {
 	client *s3.Client
 	bucket string
-	log    zerolog.Logger
 }
 
-func NewS3Storage(client *s3.Client, bucket string, log zerolog.Logger) *Service {
-	return &Service{client: client, bucket: bucket, log: log}
+func NewS3Storage(client *s3.Client, bucket string) *Service {
+	return &Service{client: client, bucket: bucket}
 }
 
 func (s *Service) Upload(ctx context.Context, key string, content string) error {

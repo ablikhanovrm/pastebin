@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 type PasteService interface {
@@ -31,19 +30,20 @@ type Service struct {
 	db        *pgxpool.Pool
 	s3Storage *storage.Service
 	cache     *cache.RedisCache
-	log       zerolog.Logger
 }
 
-func NewPasteService(db *pgxpool.Pool, s3Storage *storage.Service, cache *cache.RedisCache, log zerolog.Logger) *Service {
-	return &Service{db: db, s3Storage: s3Storage, cache: cache, log: log}
+func NewPasteService(db *pgxpool.Pool, s3Storage *storage.Service, cache *cache.RedisCache) *Service {
+	return &Service{db: db, s3Storage: s3Storage, cache: cache}
 }
 
 // repo helper
 func (s *Service) repo(db dbgen.DBTX) *pasterepo.SqlcPasteRepository {
-	return pasterepo.NewSqlcPasteRepository(db, s.log)
+	return pasterepo.NewSqlcPasteRepository(db)
 }
 
 func (s *Service) Create(ctx context.Context, userId int64, in CreatePasteInput) (*paste.Paste, error) {
+	log := zerolog.Ctx(ctx)
+
 	repo := s.repo(s.db)
 
 	newUuid := uuid.New()
@@ -65,6 +65,7 @@ func (s *Service) Create(ctx context.Context, userId int64, in CreatePasteInput)
 	createdPaste, err := repo.Create(ctx, userId, opts)
 
 	if err != nil {
+		log.Error().Err(err).Msg("failed create paste in db")
 		return nil, err
 	}
 
@@ -75,6 +76,8 @@ func (s *Service) Create(ctx context.Context, userId int64, in CreatePasteInput)
 		if delErr := repo.Delete(ctx, userId, newUuid); delErr != nil {
 			log.Error().Err(delErr).Msg("failed cleanup paste after s3 fail")
 		}
+		log.Error().Err(err).Msg(ErrUploadFailed.Error())
+
 		return nil, ErrUploadFailed
 	}
 
@@ -88,6 +91,8 @@ func (s *Service) Create(ctx context.Context, userId int64, in CreatePasteInput)
 } // cache done
 
 func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (*paste.Paste, error) {
+	log := zerolog.Ctx(ctx)
+
 	repo := s.repo(s.db)
 
 	parsedUuid, err := uuid.Parse(pasteUuid)
@@ -99,7 +104,7 @@ func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (
 	res, err := s.cache.GetPaste(ctx, pasteUuid)
 
 	if err != nil {
-		s.log.Warn().Err(err).Msg("cache get failed")
+		log.Warn().Err(err).Msg("cache get failed")
 	}
 
 	if res != nil {
@@ -114,7 +119,7 @@ func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (
 
 	go func() {
 		if err = s.cache.SetPaste(context.Background(), res); err != nil {
-			s.log.Warn().Err(err).Msg("failed to set paste in cache")
+			log.Warn().Err(err).Msg("failed to set paste in cache")
 		}
 	}()
 
@@ -122,6 +127,8 @@ func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (
 } // cache done
 
 func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64) (io.ReadCloser, int64, error) {
+	log := zerolog.Ctx(ctx)
+
 	repo := s.repo(s.db)
 
 	parsedUuid, err := uuid.Parse(pasteUuid)
@@ -133,7 +140,7 @@ func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64
 	content, err := s.cache.GetPasteContent(ctx, pasteUuid)
 
 	if err != nil {
-		s.log.Warn().Err(err).Msg("cache get failed")
+		log.Warn().Err(err).Msg("cache get failed")
 	}
 
 	if len(content) > 0 {
@@ -143,6 +150,7 @@ func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64
 	res, err := repo.GetByID(ctx, userId, parsedUuid)
 
 	if err != nil {
+		log.Warn().Err(err).Msg("failed get paste from db, paste not found or user not allowed to see it")
 		return nil, 0, err
 	}
 
@@ -153,8 +161,10 @@ func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64
 	body, length, err := s.s3Storage.Get(ctx, res.S3Key)
 
 	if err != nil {
+		log.Warn().Err(err).Msg("failed get paste content from s3")
 		return nil, 0, err
 	}
+
 	buf := &bytes.Buffer{}
 	tee := io.TeeReader(body, buf)
 
@@ -257,8 +267,11 @@ func (s *Service) Delete(ctx context.Context, pasteUuid string, userId int64) er
 }
 
 func (s *Service) Update(ctx context.Context, pasteUuid string, userId int64, in UpdatePasteInput) error {
+	log := zerolog.Ctx(ctx)
+
 	parsedUuid, err := uuid.Parse(pasteUuid)
 	if err != nil {
+		log.Warn().Err(err).Msg("failed parse paste uuid")
 		return err
 	}
 
@@ -279,13 +292,13 @@ func (s *Service) Update(ctx context.Context, pasteUuid string, userId int64, in
 		err := s.cache.SetPaste(context.Background(), p)
 
 		if err != nil {
-			s.log.Warn().Err(err).Msg("failed to set paste in cache")
+			log.Warn().Err(err).Msg("failed to set paste in cache")
 		}
 
 		err = s.cache.InvalidatePasteLists(context.Background())
 
 		if err != nil {
-			s.log.Warn().Err(err).Msg("failed to invalidate paste lists")
+			log.Warn().Err(err).Msg("failed to invalidate paste lists")
 		}
 	}(updated)
 
@@ -300,19 +313,20 @@ func (s *Service) getFromCacheThenDB(
 	fetchPage func() ([]*paste.Paste, error), // загрузка страницы из БД (если полный miss)
 	fetchByIDs func([]uuid.UUID) ([]*paste.Paste, error), // загрузка конкретных paste по id
 ) ([]*paste.Paste, *time.Time, error) {
+	log := zerolog.Ctx(ctx)
 
 	var pastes []*paste.Paste
 
 	// LIST CACHE
 	pasteIDs, err := s.cache.GetPasteList(ctx, limit, cursor)
 	if err != nil {
-		s.log.Warn().Err(err).Msg("cache get list failed")
+		log.Warn().Err(err).Msg("cache get list failed")
 	}
 
 	if len(pasteIDs) > 0 {
 		founded, missIDs, err := s.cache.MgetPasteList(ctx, pasteIDs)
 		if err != nil {
-			s.log.Warn().Err(err).Msg("cache mget failed")
+			log.Warn().Err(err).Msg("cache mget failed")
 		}
 
 		// MISS → DB
@@ -323,14 +337,14 @@ func (s *Service) getFromCacheThenDB(
 
 				missPastes, err = fetchByIDs(parsed)
 				if err != nil {
-					s.log.Warn().Err(err).Msg("db load miss failed")
+					log.Warn().Err(err).Msg("failed to load miss pastes from db")
 				}
 
 				// прогрев кеша
 				if len(missPastes) > 0 {
 					go func(pastes []*paste.Paste) {
 						if err := s.cache.MsetPasteList(ctx, pastes); err != nil {
-							s.log.Warn().Err(err).Msg("cache set miss pastes failed")
+							log.Warn().Err(err).Msg("failed to set miss pastes in cache")
 						}
 					}(missPastes)
 				}
@@ -358,7 +372,7 @@ func (s *Service) getFromCacheThenDB(
 			return pastes, &next, nil
 		}
 
-		s.log.Warn().Msg("cache list exists but empty result, fallback db")
+		log.Warn().Msg("cache list exists but empty result, fallback db")
 	}
 
 	// FULL DB FALLBACK
@@ -374,7 +388,7 @@ func (s *Service) getFromCacheThenDB(
 	// прогрев кеша
 	go func(pastes []*paste.Paste, cur *time.Time, l int32) {
 		if err := s.cache.MsetPasteList(ctx, pastes); err != nil {
-			s.log.Warn().Err(err).Msg("cache set pastes failed")
+			log.Warn().Err(err).Msg("failed to set pastes in cache")
 		}
 
 		ids := make([]string, 0, len(pastes))
@@ -383,7 +397,7 @@ func (s *Service) getFromCacheThenDB(
 		}
 
 		if err := s.cache.SetPasteList(ctx, ids, cur, l); err != nil {
-			s.log.Warn().Err(err).Msg("cache set list failed")
+			log.Warn().Err(err).Msg("failed to set list paste in cache")
 		}
 
 	}(pastes, cursor, limit)

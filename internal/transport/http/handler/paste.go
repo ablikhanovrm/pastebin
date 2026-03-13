@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -9,9 +10,12 @@ import (
 	pasteService "github.com/ablikhanovrm/pastebin/internal/service/paste"
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/middleware"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 )
 
 func (h *Handler) GetPastes(c *gin.Context) {
+	log := zerolog.Ctx(c.Request.Context())
+
 	limit := int32(20)
 	if l := c.Query("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil {
@@ -23,7 +27,8 @@ func (h *Handler) GetPastes(c *gin.Context) {
 	if cur := c.Query("cursor"); cur != "" {
 		t, err := time.Parse(time.RFC3339, cur)
 		if err != nil {
-			c.JSON(400, gin.H{"error": "invalid cursor"})
+			log.Warn().Err(err).Msg("parse cursor failed")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid cursor"})
 			return
 		}
 		cursor = &t
@@ -31,11 +36,12 @@ func (h *Handler) GetPastes(c *gin.Context) {
 
 	items, nextCursor, err := h.services.Paste.GetPastes(c.Request.Context(), middleware.GetUserID(c), cursor, limit)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Warn().Err(err).Msg("get pastes failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"items":       items,
 		"next_cursor": nextCursor,
 	})
@@ -43,6 +49,8 @@ func (h *Handler) GetPastes(c *gin.Context) {
 }
 
 func (h *Handler) GetMyPastes(c *gin.Context) {
+	log := zerolog.Ctx(c.Request.Context())
+
 	limit := int32(20)
 	if l := c.Query("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil {
@@ -54,7 +62,8 @@ func (h *Handler) GetMyPastes(c *gin.Context) {
 	if cur := c.Query("cursor"); cur != "" {
 		t, err := time.Parse(time.RFC3339, cur)
 		if err != nil {
-			c.JSON(400, gin.H{"error": "invalid cursor"})
+			log.Warn().Err(err).Msg("parse cursor failed")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid cursor"})
 			return
 		}
 		cursor = &t
@@ -62,11 +71,12 @@ func (h *Handler) GetMyPastes(c *gin.Context) {
 
 	items, nextCursor, err := h.services.Paste.GetPastes(c.Request.Context(), middleware.GetUserID(c), cursor, limit)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Warn().Err(err).Msg("get pastes failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"items":       items,
 		"next_cursor": nextCursor,
 	})
@@ -77,7 +87,7 @@ func (h *Handler) GetPaste(c *gin.Context) {
 	id := c.Param("id")
 
 	if id == "" {
-		c.JSON(400, gin.H{"error": ErrMissingIDParam.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": ErrMissingIDParam.Error()})
 		return
 	}
 
@@ -86,18 +96,21 @@ func (h *Handler) GetPaste(c *gin.Context) {
 	res, err := h.services.Paste.GetByID(c.Request.Context(), id, userId)
 
 	if err != nil && errors.Is(paste.ErrNotFound, err) {
-		c.JSON(404, gin.H{"error": "paste not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "paste not found"})
 		return
 	}
 
-	c.JSON(200, res)
+	c.JSON(http.StatusOK, res)
 }
 
 func (h *Handler) GetPasteContent(c *gin.Context) {
+	log := zerolog.Ctx(c.Request.Context())
+
 	id := c.Param("id")
 
 	if id == "" {
-		c.JSON(400, gin.H{"error": ErrMissingIDParam.Error()})
+		log.Warn().Msg("paste id is empty")
+		c.JSON(http.StatusBadRequest, gin.H{"error": ErrMissingIDParam.Error()})
 		return
 	}
 
@@ -107,7 +120,7 @@ func (h *Handler) GetPasteContent(c *gin.Context) {
 
 	if err != nil {
 		if errors.Is(err, paste.ErrNotFound) {
-			c.JSON(404, gin.H{"error": "paste not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "paste not found"})
 			return
 		}
 
@@ -119,7 +132,6 @@ func (h *Handler) GetPasteContent(c *gin.Context) {
 		_ = reader.Close()
 	}()
 
-	// TODO: add return data from cache(redis)
 	c.DataFromReader(
 		200,
 		size,
@@ -131,10 +143,13 @@ func (h *Handler) GetPasteContent(c *gin.Context) {
 }
 
 func (h *Handler) CreatePaste(c *gin.Context) {
+	log := zerolog.Ctx(c.Request.Context())
+
 	var opts CreatePasteRequest
 
 	if err := c.ShouldBindJSON(&opts); err == nil {
-		c.JSON(400, gin.H{"error": "invalid body"})
+		log.Warn().Err(err).Msg("invalid body")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
 		return
 	}
 
@@ -150,23 +165,28 @@ func (h *Handler) CreatePaste(c *gin.Context) {
 	res, err := h.services.Paste.Create(c.Request.Context(), middleware.GetUserID(c), input)
 
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed create paste"})
+		log.Warn().Err(err).Msg("failed create paste")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed create paste"})
 		return
 	}
 
-	c.JSON(200, res)
+	c.JSON(http.StatusOK, res)
 }
 
 func (h *Handler) UpdatePaste(c *gin.Context) {
+	log := zerolog.Ctx(c.Request.Context())
+
 	var req UpdatePasteRequest
 
 	pasteUuid := c.Param("id")
 	if pasteUuid == "" {
-		c.JSON(400, gin.H{"error": ErrMissingIDParam.Error()})
+		log.Warn().Msg("paste id is empty")
+		c.JSON(http.StatusBadRequest, gin.H{"error": ErrMissingIDParam.Error()})
 	}
 
 	if err := c.ShouldBindJSON(&req); err == nil {
-		c.JSON(400, gin.H{"error": ErrInvalidJSON})
+		log.Warn().Err(err).Msg("invalid body")
+		c.JSON(http.StatusBadRequest, gin.H{"error": ErrInvalidJSON})
 		return
 	}
 
@@ -181,21 +201,25 @@ func (h *Handler) UpdatePaste(c *gin.Context) {
 	err := h.services.Paste.Update(c.Request.Context(), pasteUuid, middleware.GetUserID(c), updateOpts)
 
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Warn().Err(err).Msg("failed update paste")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "paste updated"})
+	c.JSON(http.StatusOK, gin.H{"message": "paste updated"})
 }
 
 func (h *Handler) DeletePaste(c *gin.Context) {
+	log := zerolog.Ctx(c.Request.Context())
+
 	pasteUuid := c.Param("id")
 
 	err := h.services.Paste.Delete(c.Request.Context(), pasteUuid, middleware.GetUserID(c))
 
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Warn().Err(err).Msg("failed delete paste")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	c.JSON(200, gin.H{"message": "paste deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "paste deleted"})
 }

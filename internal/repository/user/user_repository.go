@@ -9,7 +9,6 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/models/user"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/rs/zerolog"
 )
 
 type UserRepository interface {
@@ -19,14 +18,12 @@ type UserRepository interface {
 }
 
 type SqlcUserRepository struct {
-	q   *dbgen.Queries
-	log zerolog.Logger
+	q *dbgen.Queries
 }
 
-func NewSqlcUserRepository(db dbgen.DBTX, log zerolog.Logger) *SqlcUserRepository {
+func NewSqlcUserRepository(db dbgen.DBTX) *SqlcUserRepository {
 	return &SqlcUserRepository{
-		q:   dbgen.New(db),
-		log: log,
+		q: dbgen.New(db),
 	}
 }
 

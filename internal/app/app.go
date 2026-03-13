@@ -29,20 +29,19 @@ func Run() {
 	}
 
 	s3Client, _ := storage.NewS3Client(newConfig.S3)
-	s3Storage := storage.NewS3Storage(s3Client, newConfig.S3.Bucket, logger.With().Str("layer", "storage").Logger())
+	s3Storage := storage.NewS3Storage(s3Client, newConfig.S3.Bucket)
 
-	repo := repository.NewRepository(db.Pool, logger.With().Str("layer", "repository").Logger())
+	repo := repository.NewRepository(db.Pool)
 	jwtManager := jwt.New(newConfig.Server.JwtSecret)
 
-	redisClient := cacheRepo.NewRedis(newConfig.Redis, logger.With().Str("layer", "redis_client").Logger())
-	cache := cacheRepo.NewRedisCache(redisClient, logger.With().Str("layer", "cache").Logger())
+	redisClient := cacheRepo.NewRedis(newConfig.Redis, logger)
+	cache := cacheRepo.NewRedisCache(redisClient, logger)
 
-	services := service.NewServices(repo, jwtManager, db.Pool, s3Storage, cache, logger.With().Str("layer", "service").Logger())
+	services := service.NewServices(repo, jwtManager, db.Pool, s3Storage, cache)
 
-	handlerLogger := logger.With().Str("layer", "handler").Logger()
-	newHandler := handler.NewHandler(services, &newConfig.Server, handlerLogger)
+	newHandler := handler.NewHandler(services, &newConfig.Server)
 
-	router := routes.InitRoutes(newHandler, jwtManager)
+	router := routes.InitRoutes(newHandler, jwtManager, logger)
 
 	srv := new(Server)
 

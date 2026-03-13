@@ -5,13 +5,15 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/middleware"
 	"github.com/ablikhanovrm/pastebin/pkg/jwt"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 )
 
-func InitRoutes(h *handler.Handler, jwtManager *jwt.Manager) *gin.Engine {
+func InitRoutes(h *handler.Handler, jwtManager *jwt.Manager, log zerolog.Logger) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(middleware.ClientInfoMiddleware())
+	router.Use(middleware.RequestLogger(log))
 
 	api := router.Group("/api")
 
