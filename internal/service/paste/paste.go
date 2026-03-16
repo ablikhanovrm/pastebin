@@ -3,6 +3,7 @@ package paste
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
+	"golang.org/x/sync/singleflight"
 )
 
 type PasteService interface {
@@ -30,6 +32,7 @@ type Service struct {
 	db        *pgxpool.Pool
 	s3Storage *storage.Service
 	cache     *cache.RedisCache
+	sf        singleflight.Group
 }
 
 func NewPasteService(db *pgxpool.Pool, s3Storage *storage.Service, cache *cache.RedisCache) *Service {
@@ -93,14 +96,6 @@ func (s *Service) Create(ctx context.Context, userId int64, in CreatePasteInput)
 func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (*paste.Paste, error) {
 	log := zerolog.Ctx(ctx)
 
-	repo := s.repo(s.db)
-
-	parsedUuid, err := uuid.Parse(pasteUuid)
-
-	if err != nil {
-		return nil, err
-	}
-
 	res, err := s.cache.GetPaste(ctx, pasteUuid)
 
 	if err != nil {
@@ -111,19 +106,42 @@ func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (
 		return res, nil
 	}
 
-	res, err = repo.GetByID(ctx, userId, parsedUuid)
+	repo := s.repo(s.db)
+	key := fmt.Sprintf("paste:%s:%d", pasteUuid, userId)
+	v, err, _ := s.sf.Do(key, func() (interface{}, error) {
+		res, err := s.cache.GetPaste(ctx, pasteUuid)
+
+		if err != nil {
+			log.Warn().Err(err).Msg("cache get failed")
+		}
+
+		if res != nil {
+			return res, nil
+		}
+
+		parsedUuid, err := uuid.Parse(pasteUuid)
+		if err != nil {
+			return nil, err
+		}
+
+		res, err = repo.GetByID(ctx, userId, parsedUuid)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if err = s.cache.SetPaste(context.Background(), res); err != nil {
+			log.Warn().Err(err).Msg("failed to set paste in cache")
+		}
+
+		return res, nil
+	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	go func() {
-		if err = s.cache.SetPaste(context.Background(), res); err != nil {
-			log.Warn().Err(err).Msg("failed to set paste in cache")
-		}
-	}()
-
-	return res, nil
+	return v.(*paste.Paste), nil
 } // cache done
 
 func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64) (io.ReadCloser, int64, error) {
