@@ -1,6 +1,7 @@
 package routes
 
 import (
+	gometrics "github.com/ablikhanovrm/pastebin/internal/metrics"
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/handler"
 	"github.com/ablikhanovrm/pastebin/internal/transport/http/middleware"
 	"github.com/ablikhanovrm/pastebin/pkg/jwt"
@@ -14,11 +15,13 @@ func InitRoutes(h *handler.Handler, jwtManager *jwt.Manager, log zerolog.Logger)
 	router.Use(gin.Recovery())
 	router.Use(middleware.ClientInfoMiddleware())
 	router.Use(middleware.RequestLogger(log))
+	router.Use(gometrics.GinMiddleware())
 
 	api := router.Group("/api")
 
 	// публичные
 	InitAuthRoutes(api, h)
+	InitMetricRoutes(api)
 
 	// защищённые
 	auth := api.Group("/")

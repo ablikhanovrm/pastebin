@@ -8,6 +8,7 @@ import (
 
 	"github.com/ablikhanovrm/pastebin/internal/config"
 	"github.com/ablikhanovrm/pastebin/internal/logging"
+	"github.com/ablikhanovrm/pastebin/internal/metrics"
 	"github.com/ablikhanovrm/pastebin/internal/repository"
 	cacheRepo "github.com/ablikhanovrm/pastebin/internal/repository/cache"
 	"github.com/ablikhanovrm/pastebin/internal/service"
@@ -19,6 +20,7 @@ import (
 
 func Run() {
 	newConfig := config.GetConfig()
+	metrics.MustRegister()
 
 	logger := logging.New("pastebin")
 
@@ -46,6 +48,7 @@ func Run() {
 	srv := new(Server)
 
 	go func() {
+
 		if err := srv.NewServer(newConfig, router); err != nil {
 			logger.Fatal().Err(err).Msg("Failed to run server")
 		}
