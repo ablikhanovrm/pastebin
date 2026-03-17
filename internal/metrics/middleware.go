@@ -16,8 +16,20 @@ func GinMiddleware() gin.HandlerFunc {
 		status := strconv.Itoa(c.Writer.Status())
 		method := c.Request.Method
 		path := c.FullPath()
+
+		// если роут не сматчился — сразу выходим
 		if path == "" {
-			path = "unknown"
+			return
+		}
+
+		// исключаем служебные ручки
+		if path == "/api/metrics" {
+			return
+		}
+
+		// опционально игнорим 404
+		if status == "404" {
+			return
 		}
 
 		duration := time.Since(start).Seconds()
