@@ -1,6 +1,9 @@
 package metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+)
 
 var (
 	HTTPRequestsTotal = prometheus.NewCounterVec(
@@ -25,5 +28,7 @@ func MustRegister() {
 	prometheus.MustRegister(
 		HTTPRequestsTotal,
 		HTTPRequestDuration,
+		collectors.NewGoCollector(), // runtime go (goroutines, GC, memory Go)
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}), // (CPU, RAM, fd и т.д.)
 	)
 }
