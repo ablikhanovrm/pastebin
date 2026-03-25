@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -49,7 +50,7 @@ func Run() {
 	srv := new(Server)
 
 	go func() {
-		if err := srv.NewServer(newConfig, router); err != nil && err != http.ErrServerClosed {
+		if err := srv.NewServer(newConfig, router); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Fatal().Err(err).Msg("Failed to run server")
 		}
 	}()
