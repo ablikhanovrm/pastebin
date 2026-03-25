@@ -5,11 +5,11 @@ RETURNING id, created_at;
 
 -- name: RevokeRefreshToken :exec
 UPDATE refresh_tokens 
-SET revoked = true, revoked_at = NOW()
+SET revoked_at = NOW()
 WHERE token_hash = $1 AND revoked_at IS NULL;
 
 -- name: GetRefreshTokenByHash :one
 SELECT r.user_id, r.token_hash, r.user_agent, r.ip_address, r.expires_at 
 FROM refresh_tokens AS r
-WHERE r.token_hash = $1 AND r.revoked = false
+WHERE r.token_hash = $1 AND r.expires_at > NOW() AND r.revoked_at IS NULL
 LIMIT 1;
