@@ -152,7 +152,7 @@ func (q *Queries) GetPasteById(ctx context.Context, arg GetPasteByIdParams) (Pas
 const getPastesAfterCursor = `-- name: GetPastesAfterCursor :many
 SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
 WHERE p.visibility='public'
-   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now()) AND created_at < $2
+   OR p.user_id=$1 AND (expire_at IS NULL OR expire_at > now()) AND created_at < $2
 ORDER BY p.created_at DESC
 LIMIT $3
 `
@@ -200,7 +200,7 @@ func (q *Queries) GetPastesAfterCursor(ctx context.Context, arg GetPastesAfterCu
 const getPastesFirstPage = `-- name: GetPastesFirstPage :many
 SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
 WHERE p.visibility='public'
-   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
+   OR p.user_id=$1 AND (expire_at IS NULL OR expire_at > now())
 ORDER BY created_at DESC
 LIMIT $2
 `
@@ -246,7 +246,7 @@ func (q *Queries) GetPastesFirstPage(ctx context.Context, arg GetPastesFirstPage
 
 const getUserPastesAfterCursor = `-- name: GetUserPastesAfterCursor :many
 SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
-WHERE p.user_id=$1 AND (expires_at IS NULL OR expires_at > now()) AND created_at < $2
+WHERE p.user_id=$1 AND (expire_at IS NULL OR expire_at > now()) AND created_at < $2
 ORDER BY p.created_at DESC
 LIMIT $3
 `
@@ -293,7 +293,7 @@ func (q *Queries) GetUserPastesAfterCursor(ctx context.Context, arg GetUserPaste
 
 const getUserPastesFirstPage = `-- name: GetUserPastesFirstPage :many
 SELECT id, uuid, user_id, title, s3_key, views_count, max_views, status, syntax, visibility, expire_at, created_at, updated_at FROM pastes as p
-WHERE p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
+WHERE p.user_id=$1 AND (expire_at IS NULL OR expire_at > now())
 ORDER BY created_at DESC
 LIMIT $2
 `
