@@ -27,7 +27,7 @@ func (m *Manager) Generate(userID int64, ttl time.Duration) (string, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return token.SignedString(m.secret)
+	return token.SignedString([]byte(m.secret))
 }
 
 func (m *Manager) Parse(tokenSrt string) (*Claims, error) {
