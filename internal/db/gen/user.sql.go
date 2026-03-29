@@ -37,46 +37,34 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, created_at FROM users AS u WHERE u.email = $1
+SELECT id, name, email, password_hash, created_at FROM users AS u WHERE u.email = $1
 `
 
-type GetUserByEmailRow struct {
-	ID        int64
-	Name      string
-	Email     string
-	CreatedAt pgtype.Timestamptz
-}
-
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
-	var i GetUserByEmailRow
+	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Email,
+		&i.PasswordHash,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, name, email, created_at FROM users AS u WHERE u.id = $1
+SELECT id, name, email, password_hash, created_at FROM users AS u WHERE u.id = $1
 `
 
-type GetUserByIdRow struct {
-	ID        int64
-	Name      string
-	Email     string
-	CreatedAt pgtype.Timestamptz
-}
-
-func (q *Queries) GetUserById(ctx context.Context, id int64) (GetUserByIdRow, error) {
+func (q *Queries) GetUserById(ctx context.Context, id int64) (User, error) {
 	row := q.db.QueryRow(ctx, getUserById, id)
-	var i GetUserByIdRow
+	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Email,
+		&i.PasswordHash,
 		&i.CreatedAt,
 	)
 	return i, err

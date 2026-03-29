@@ -5,20 +5,22 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/models/user"
 )
 
-func mapUserByEmail(u dbgen.GetUserByEmailRow) *user.User {
+func mapUserByEmail(u dbgen.User) *user.User {
 	return &user.User{
-		Id:        u.ID,
-		Email:     u.Email,
-		Name:      u.Name,
-		CreatedAt: u.CreatedAt.Time,
+		Id:           u.ID,
+		Email:        u.Email,
+		Name:         u.Name,
+		CreatedAt:    u.CreatedAt.Time,
+		PasswordHash: u.PasswordHash,
 	}
 }
 
-func mapUserById(u dbgen.GetUserByIdRow) *user.User {
+func mapUserById(u dbgen.User) *user.User {
 	return &user.User{
-		Id:        u.ID,
-		Email:     u.Email,
-		Name:      u.Name,
-		CreatedAt: u.CreatedAt.Time,
+		Id:           u.ID,
+		Email:        u.Email,
+		Name:         u.Name,
+		CreatedAt:    u.CreatedAt.Time,
+		PasswordHash: u.PasswordHash,
 	}
 }
