@@ -10,27 +10,27 @@ WHERE p.uuid = ANY(sqlc.arg(ids)::uuid[]) AND p.user_id = sqlc.arg(userId);
 -- name: GetPastesFirstPage :many
 SELECT * FROM pastes as p
 WHERE p.visibility='public'
-   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
+   OR p.user_id=$1 AND (expire_at IS NULL OR expire_at > now())
 ORDER BY created_at DESC
 LIMIT $2;
 
 -- name: GetPastesAfterCursor :many
 SELECT * FROM pastes as p
 WHERE p.visibility='public'
-   OR p.user_id=$1 AND (expires_at IS NULL OR expires_at > now()) AND created_at < $2
+   OR p.user_id=$1 AND (expire_at IS NULL OR expire_at > now()) AND created_at < $2
 ORDER BY p.created_at DESC
 LIMIT $3;
 
 
 -- name: GetUserPastesFirstPage :many
 SELECT * FROM pastes as p
-WHERE p.user_id=$1 AND (expires_at IS NULL OR expires_at > now())
+WHERE p.user_id=$1 AND (expire_at IS NULL OR expire_at > now())
 ORDER BY created_at DESC
 LIMIT $2;
 
 -- name: GetUserPastesAfterCursor :many
 SELECT * FROM pastes as p
-WHERE p.user_id=$1 AND (expires_at IS NULL OR expires_at > now()) AND created_at < $2
+WHERE p.user_id=$1 AND (expire_at IS NULL OR expire_at > now()) AND created_at < $2
 ORDER BY p.created_at DESC
 LIMIT $3;
 
