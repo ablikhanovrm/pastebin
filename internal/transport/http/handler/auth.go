@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/ablikhanovrm/pastebin/internal/service/auth"
@@ -19,7 +20,8 @@ func (h *Handler) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
+	fmt.Println("Login req INPUT:", req.Email)
+	fmt.Println("Login req INPUT:", req.Password)
 	ctx := c.Request.Context()
 	tokens, err := h.services.Auth.Login(ctx, auth.LoginInput{
 		Email:     req.Email,
@@ -70,6 +72,8 @@ func (h *Handler) Register(c *gin.Context) {
 		})
 		return
 	}
+	fmt.Println("Register req INPUT:", req.Email)
+	fmt.Println("Register req INPUT:", req.Password)
 
 	ip := middleware.GetClientIP(c)
 	ua := middleware.GetUserAgent(c)

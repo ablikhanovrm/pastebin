@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	dbgen "github.com/ablikhanovrm/pastebin/internal/db/gen"
@@ -58,6 +59,9 @@ func (s *Service) Login(ctx context.Context, params LoginInput) (*Tokens, error)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("INPUT:", params.Password)
+	fmt.Println("HASH:", foundUser.PasswordHash)
 
 	if !security.CheckPassword(foundUser.PasswordHash, params.Password) {
 		return nil, user.ErrInvalidCredentials
@@ -176,7 +180,10 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string, ip string, u
 func (s *Service) Register(ctx context.Context, input RegisterInput) (*Tokens, error) {
 	log := zerolog.Ctx(ctx)
 
+	fmt.Println("Register INPUT:", input.Password)
+
 	hashPass, err := security.HashPassword(input.Password)
+	fmt.Println("Register hashPass:", hashPass)
 	if err != nil {
 		return nil, err
 	}
