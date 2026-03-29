@@ -57,6 +57,9 @@ jobs:
             S3_SECRET_ACCESS_KEY=${{ secrets.S3_SECRET_ACCESS_KEY }}
             S3_BUCKET=${{ secrets.S3_BUCKET }}
             LOG_LEVEL=${{ secrets.LOG_LEVEL }}
+            RATE_LIMIT_ENABLED=${{secrets.RATE_LIMIT_ENABLED}}
+            RATE_LIMIT_LIMIT=${{secrets.RATE_LIMIT_LIMIT}}
+            RATE_LIMIT_WINDOW_SEC=${{secrets.RATE_LIMIT_WINDOW_SEC}}
             EOF
 
             docker-compose -f docker-compose.prod.yml --env-file .env down

@@ -11,6 +11,7 @@ import (
 	"github.com/ablikhanovrm/pastebin/internal/config"
 	"github.com/ablikhanovrm/pastebin/internal/logging"
 	"github.com/ablikhanovrm/pastebin/internal/metrics"
+	"github.com/ablikhanovrm/pastebin/internal/ratelimit"
 	"github.com/ablikhanovrm/pastebin/internal/repository"
 	cacheRepo "github.com/ablikhanovrm/pastebin/internal/repository/cache"
 	"github.com/ablikhanovrm/pastebin/internal/service"
@@ -21,6 +22,9 @@ import (
 )
 
 func Run() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
 	newConfig := config.GetConfig()
 	metrics.MustRegister()
 
@@ -45,7 +49,18 @@ func Run() {
 
 	newHandler := handler.NewHandler(services, &newConfig.Server)
 
-	router := routes.InitRoutes(newHandler, jwtManager, logger)
+	var limiter *ratelimit.Limiter
+
+	// RateLimiter
+	if newConfig.RateLimiter.Enabled {
+		windowSec := newConfig.RateLimiter.Window
+		if windowSec == 0 {
+			windowSec = 60
+		}
+		limiter = ratelimit.NewLimiter(redisClient, newConfig.RateLimiter.Limit, time.Duration(windowSec)*time.Second)
+	}
+
+	router := routes.InitRoutes(newHandler, jwtManager, limiter, logger)
 
 	srv := new(Server)
 
@@ -54,9 +69,6 @@ func Run() {
 			logger.Fatal().Err(err).Msg("Failed to run server")
 		}
 	}()
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer stop()
 
 	<-ctx.Done()
 

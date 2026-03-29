@@ -10,11 +10,12 @@ import (
 )
 
 type Config struct {
-	AppEnv string `env:"APP_ENV" required:"true"`
-	Server HttpServer
-	DB     DatabaseConfig
-	S3     S3Config
-	Redis  RedisConfig
+	AppEnv      string `env:"APP_ENV" required:"true"`
+	Server      HttpServer
+	DB          DatabaseConfig
+	S3          S3Config
+	Redis       RedisConfig
+	RateLimiter RateLimiter
 }
 
 type HttpServer struct {
@@ -50,6 +51,12 @@ type RedisConfig struct {
 	Host     string `env:"REDIS_HOST" required:"true"`
 	Port     string `env:"REDIS_PORT" required:"true"`
 	Password string `env:"REDIS_PASSWORD" required:"true"`
+}
+
+type RateLimiter struct {
+	Enabled bool `env:"RATE_LIMIT_ENABLED" required:"true"`
+	Limit   int  `env-default:"100" env:"RATE_LIMIT_LIMIT" required:"true"`
+	Window  int  `env:"RATE_LIMIT_WINDOW_SEC" required:"true"`
 }
 
 func GetConfig() *Config {

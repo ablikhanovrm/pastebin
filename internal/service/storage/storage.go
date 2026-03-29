@@ -11,7 +11,7 @@ import (
 
 type ObjectStorage interface {
 	Upload(ctx context.Context, key string, content string) error
-	Get(ctx context.Context, key string) (string, error)
+	Get(ctx context.Context, key string) (io.ReadCloser, *int64, error)
 	Delete(ctx context.Context, key string) error
 }
 type Service struct {
@@ -53,5 +53,16 @@ func (s *Service) Get(ctx context.Context, key string) (io.ReadCloser, *int64, e
 }
 
 func (s *Service) Delete(ctx context.Context, key string) error {
+	params := &s3.DeleteObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}
+
+	_, err := s.client.DeleteObject(ctx, params)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
