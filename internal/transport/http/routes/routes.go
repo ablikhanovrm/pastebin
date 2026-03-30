@@ -17,7 +17,9 @@ func InitRoutes(h *handler.Handler, jwtManager *jwt.Manager, limiter *ratelimit.
 	router.Use(middleware.ClientInfoMiddleware())
 	router.Use(middleware.RequestLogger(log))
 	router.Use(gometrics.GinMiddleware())
-	router.Use(middleware.RateLimitMiddleware(limiter))
+	if limiter != nil {
+		router.Use(middleware.RateLimitMiddleware(limiter))
+	}
 
 	api := router.Group("/api")
 

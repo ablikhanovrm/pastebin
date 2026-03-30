@@ -22,6 +22,14 @@ func NewLimiter(rdb *redis.Client, limit int, ttl time.Duration) *Limiter {
 }
 
 func (l *Limiter) Allow(ctx context.Context, key string) (bool, error) {
+	if l == nil {
+		return true, nil
+	}
+
+	if l.rdb == nil {
+		return true, nil
+	}
+
 	redisKey := "rate_limit:" + key
 
 	count, err := l.rdb.Incr(ctx, redisKey).Result()
@@ -30,7 +38,7 @@ func (l *Limiter) Allow(ctx context.Context, key string) (bool, error) {
 	}
 
 	if count == 1 {
-		l.rdb.Expire(ctx, redisKey, l.ttl)
+		_ = l.rdb.Expire(ctx, redisKey, l.ttl).Err()
 	}
 
 	if count > int64(l.limit) {

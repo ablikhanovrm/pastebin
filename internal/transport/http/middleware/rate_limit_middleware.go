@@ -7,8 +7,17 @@ import (
 
 func RateLimitMiddleware(limiter *ratelimit.Limiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ip := GetClientIP(c)
+		if limiter == nil {
+			c.Next()
+			return
+		}
 
+		if c.Request.URL.Path == "/api/metrics" {
+			c.Next()
+			return
+		}
+
+		ip := GetClientIP(c)
 		allowed, err := limiter.Allow(c.Request.Context(), ip)
 		if err != nil {
 			c.AbortWithStatusJSON(500, gin.H{"error": "internal error"})
