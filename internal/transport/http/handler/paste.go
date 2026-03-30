@@ -147,9 +147,9 @@ func (h *Handler) CreatePaste(c *gin.Context) {
 	log := zerolog.Ctx(c.Request.Context())
 
 	var opts CreatePasteRequest
-	fmt.Sprintln("PARAMS", c.Params)
+	fmt.Println("PARAMS", c.Params)
 
-	if err := c.ShouldBindJSON(&opts); err == nil {
+	if err := c.ShouldBindJSON(&opts); err != nil {
 		log.Warn().Err(err).Msg("invalid body")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
 		return
