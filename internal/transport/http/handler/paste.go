@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -146,6 +147,7 @@ func (h *Handler) CreatePaste(c *gin.Context) {
 	log := zerolog.Ctx(c.Request.Context())
 
 	var opts CreatePasteRequest
+	fmt.Sprintln("PARAMS", c.Params)
 
 	if err := c.ShouldBindJSON(&opts); err == nil {
 		log.Warn().Err(err).Msg("invalid body")
