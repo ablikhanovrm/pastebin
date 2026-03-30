@@ -36,7 +36,11 @@ func Run() {
 		logger.Fatal().Err(err).Msg("failed to connect database")
 	}
 
-	s3Client, _ := storage.NewS3Client(newConfig.S3)
+	s3Client, err := storage.NewS3Client(newConfig.S3)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to init s3 client")
+	}
+
 	s3Storage := storage.NewS3Storage(s3Client, newConfig.S3.Bucket)
 
 	repo := repository.NewRepository(db.Pool)
