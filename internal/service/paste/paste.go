@@ -417,7 +417,7 @@ func (s *Service) getFromCacheThenDB(
 			ids = append(ids, p.Uuid.String())
 		}
 
-		if err := s.cache.SetPasteList(ctx, ids, cur, l); err != nil {
+		if err := s.cache.SetPasteList(dbCtx, ids, cur, l); err != nil {
 			log.Warn().Err(err).Msg("failed to set list paste in cache")
 		}
 
