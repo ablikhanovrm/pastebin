@@ -405,7 +405,10 @@ func (s *Service) getFromCacheThenDB(
 
 	// прогрев кеша
 	go func(pastes []*paste.Paste, cur *time.Time, l int32) {
-		if err := s.cache.MsetPasteList(ctx, pastes); err != nil {
+		dbCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		if err := s.cache.MsetPasteList(dbCtx, pastes); err != nil {
 			log.Warn().Err(err).Msg("failed to set pastes in cache")
 		}
 
