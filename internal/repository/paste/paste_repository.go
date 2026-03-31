@@ -103,7 +103,7 @@ func (r *SqlcPasteRepository) GetPastesFirstPage(ctx context.Context, params Get
 		return nil, err
 	}
 
-	pastes := make([]*paste.Paste, 0, len(rows))
+	pastes := make([]*paste.Paste, len(rows))
 
 	for i, row := range rows {
 		pastes[i] = mapPasteFromDB(row)
