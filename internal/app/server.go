@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/ablikhanovrm/pastebin/internal/config"
-	"github.com/rs/zerolog/log"
 )
 
 type Server struct {
@@ -15,14 +14,6 @@ type Server struct {
 
 func (s *Server) NewServer(cfg *config.Config, handler http.Handler) error {
 	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
-
-	log.Info().
-		Dur("read", cfg.Server.ReadTimeout).
-		Dur("write", cfg.Server.WriteTimeout).
-		Dur("idle", cfg.Server.IdleTimeout).
-		Str("Host", cfg.Server.Host).
-		Str("Port", cfg.Server.Port).
-		Msg("CONFIG READY")
 
 	s.httpServer = &http.Server{
 		Addr:           addr,

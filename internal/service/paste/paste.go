@@ -84,14 +84,19 @@ func (s *Service) Create(ctx context.Context, userId int64, in CreatePasteInput)
 		return nil, ErrUploadFailed
 	}
 
-	go func() {
+	go func(parentCtx context.Context) {
+		ctx := context.WithoutCancel(parentCtx)
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		log := zerolog.Ctx(ctx)
+
+		defer cancel()
 		if err := s.cache.SetPaste(ctx, opts); err != nil {
 			log.Error().Err(err).Msg("failed save paste to cache after creating")
 		}
-	}()
+	}(ctx)
 
 	return createdPaste, nil
-} // cache done
+}
 
 func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (*paste.Paste, error) {
 	log := zerolog.Ctx(ctx)
@@ -142,7 +147,7 @@ func (s *Service) GetByID(ctx context.Context, pasteUuid string, userId int64) (
 	}
 
 	return v.(*paste.Paste), nil
-} // cache done
+}
 
 func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64) (io.ReadCloser, int64, error) {
 	log := zerolog.Ctx(ctx)
@@ -201,7 +206,7 @@ func (s *Service) GetContent(ctx context.Context, pasteUuid string, userId int64
 		return reader, 0, nil
 	}
 	return reader, *length, nil
-} // cache done
+}
 
 func (s *Service) GetPastes(ctx context.Context, userId int64, cursor *time.Time, limit int32) ([]*paste.Paste, *time.Time, error) {
 	repo := s.repo(s.db)
@@ -265,21 +270,30 @@ func (s *Service) Delete(ctx context.Context, pasteUuid string, userId int64) er
 	parsedUuid, err := uuid.Parse(pasteUuid)
 
 	err = repo.Delete(ctx, userId, parsedUuid)
-
 	if err != nil {
 		return err
 	}
 
 	err = s.s3Storage.Delete(ctx, pasteUuid)
-
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		_ = s.cache.DeletePaste(context.Background(), pasteUuid)
-		_ = s.cache.InvalidatePasteLists(context.Background())
-	}()
+	go func(parentCtx context.Context) {
+		ctx := context.WithoutCancel(parentCtx)
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		log := zerolog.Ctx(ctx)
+
+		defer cancel()
+
+		if err := s.cache.DeletePaste(ctx, pasteUuid); err != nil {
+			log.Error().Err(err).Msg("failed to delete paste from cache")
+		}
+
+		if err := s.cache.InvalidatePasteLists(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to invalidate paste lists")
+		}
+	}(ctx)
 
 	return nil
 }
@@ -306,22 +320,26 @@ func (s *Service) Update(ctx context.Context, pasteUuid string, userId int64, in
 		return err
 	}
 
-	go func(p *paste.Paste) {
-		err := s.cache.SetPaste(context.Background(), p)
+	go func(p *paste.Paste, parentCtx context.Context) {
+		ctx := context.WithoutCancel(parentCtx)
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		log := zerolog.Ctx(ctx)
 
+		defer cancel()
+
+		err := s.cache.SetPaste(ctx, p)
 		if err != nil {
 			log.Warn().Err(err).Msg("failed to set paste in cache")
 		}
 
-		err = s.cache.InvalidatePasteLists(context.Background())
-
+		err = s.cache.InvalidatePasteLists(ctx)
 		if err != nil {
 			log.Warn().Err(err).Msg("failed to invalidate paste lists")
 		}
-	}(updated)
+	}(updated, ctx)
 
 	return nil
-} // cache done
+}
 
 // helpers
 func (s *Service) getFromCacheThenDB(
